@@ -1,0 +1,32 @@
+{
+  "manifest_version": 2.0,
+  "id": "network-map",
+  "name": "Network Map",
+  "namespace": "NetworkMap",
+  "version": "1.1.0",
+  "author": "Network Map",
+  "description": "Native Zabbix frontend module for the Network Map application (Zabbix-only host mapping).",
+  "actions": {
+    "networkmap.view": {
+      "class": "NetworkMapView",
+      "view": "network.map"
+    },
+    "networkmap.data": {
+      "class": "NetworkMapData",
+      "layout": "layout.json"
+    }
+  },
+  "assets": {
+    "css": [
+      "network.map.css"
+    ],
+    "js": [
+      "cytoscape.min.js",
+      "cytoscape-cose-bilkent.js",
+      "network.map.filters.js",
+      "network.map.graph.js",
+      "network.map.summary.js",
+      "network.map.app.js"
+    ]
+  }
+}

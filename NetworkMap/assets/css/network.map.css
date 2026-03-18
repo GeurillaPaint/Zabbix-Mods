@@ -1,0 +1,302 @@
+/* Network Map - frontend module styles (theme-aware) */
+
+#network-map-root.knm-root {
+  --knm-panel-bg: #ffffff;
+  --knm-panel-border: #d0d5dd;
+  --knm-panel-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --knm-input-bg: #ffffff;
+  --knm-input-border: #c7ccd1;
+  --knm-input-focus: #2563eb;
+  --knm-text: #111827;
+  --knm-muted: #667085;
+  --knm-danger: #b42318;
+  --knm-primary-bg: #2563eb;
+  --knm-primary-border: #2563eb;
+  --knm-primary-text: #ffffff;
+  --knm-secondary-bg: #ffffff;
+  --knm-secondary-border: #c7ccd1;
+  --knm-secondary-text: #111827;
+  --knm-graph-bg: #f8fafc;
+  --knm-overlay-bg: rgba(255, 255, 255, 0.78);
+  --knm-node-text: #ffffff;
+  --knm-node-outline: #333333;
+  --knm-edge-color: #98a2b3;
+  --knm-edge-text: #667085;
+  --knm-faded-opacity: 0.1;
+
+  color: var(--knm-text);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+[theme='dark-theme'] #network-map-root.knm-root,
+[theme='hc-dark'] #network-map-root.knm-root {
+  --knm-panel-bg: #1f2329;
+  --knm-panel-border: #454f55;
+  --knm-panel-shadow: none;
+  --knm-input-bg: #2b3138;
+  --knm-input-border: #59636b;
+  --knm-input-focus: #4c87ff;
+  --knm-text: #dce1e6;
+  --knm-muted: #9aa7b4;
+  --knm-danger: #ff8a80;
+  --knm-secondary-bg: #2b3138;
+  --knm-secondary-border: #59636b;
+  --knm-secondary-text: #dce1e6;
+  --knm-graph-bg: #161a1f;
+  --knm-overlay-bg: rgba(22, 26, 31, 0.82);
+  --knm-node-text: #ffffff;
+  --knm-node-outline: #0d1117;
+  --knm-edge-color: #7f8c99;
+  --knm-edge-text: #c2ccd6;
+}
+
+[theme='blue-theme'] #network-map-root.knm-root {
+  --knm-graph-bg: #f4f8ff;
+}
+
+#network-map-root .knm-panel {
+  background: var(--knm-panel-bg);
+  border: 1px solid var(--knm-panel-border);
+  border-radius: 4px;
+  box-shadow: var(--knm-panel-shadow);
+  color: var(--knm-text);
+  padding: 16px;
+}
+
+#network-map-root .knm-panel-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+#network-map-root .knm-panel-header h2,
+#network-map-root .knm-panel-header h3 {
+  color: var(--knm-text);
+  font-size: 16px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+#network-map-root .knm-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+#network-map-root .knm-form-grid {
+  display: grid;
+  gap: 12px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+#network-map-root .knm-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#network-map-root .knm-form-field > span {
+  color: var(--knm-text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+#network-map-root input[type="text"],
+#network-map-root input[type="number"],
+#network-map-root select {
+  appearance: none;
+  background: var(--knm-input-bg);
+  border: 1px solid var(--knm-input-border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--knm-text);
+  font: inherit;
+  min-height: 34px;
+  padding: 6px 8px;
+  width: 100%;
+}
+
+#network-map-root input[type="text"]::placeholder,
+#network-map-root input[type="number"]::placeholder {
+  color: var(--knm-muted);
+  opacity: 1;
+}
+
+#network-map-root input[type="text"]:focus,
+#network-map-root input[type="number"]:focus,
+#network-map-root select:focus {
+  border-color: var(--knm-input-focus);
+  outline: 2px solid transparent;
+}
+
+#network-map-root input[type="checkbox"] {
+  accent-color: var(--knm-primary-bg);
+  margin: 0;
+}
+
+#network-map-root .knm-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+#network-map-root .knm-checkbox {
+  align-items: center;
+  color: var(--knm-text);
+  display: inline-flex;
+  gap: 8px;
+  min-height: 24px;
+}
+
+#network-map-root .knm-help,
+#network-map-root .knm-status,
+#network-map-root .knm-muted {
+  color: var(--knm-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#network-map-root .knm-status {
+  margin-top: 12px;
+  white-space: pre-wrap;
+}
+
+#network-map-root .knm-status.knm-status-error,
+#network-map-root .knm-status-error {
+  color: var(--knm-danger);
+}
+
+#network-map-root .knm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+#network-map-root .knm-btn,
+#network-map-root .knm-panel-toggle {
+  appearance: none;
+  border: 1px solid var(--knm-primary-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  min-height: 34px;
+  padding: 8px 12px;
+}
+
+#network-map-root .knm-btn {
+  background: var(--knm-primary-bg);
+  color: var(--knm-primary-text);
+}
+
+#network-map-root .knm-btn.knm-btn-secondary,
+#network-map-root .knm-panel-toggle {
+  background: var(--knm-secondary-bg);
+  border-color: var(--knm-secondary-border);
+  color: var(--knm-secondary-text);
+}
+
+#network-map-root .knm-btn:disabled,
+#network-map-root .knm-panel-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#network-map-root .knm-main {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+#network-map-root .knm-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#network-map-root .knm-graph-panel {
+  min-height: 720px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+}
+
+#network-map-root #knm-cy {
+  background: var(--knm-graph-bg);
+  height: 72vh;
+  min-height: 620px;
+  width: 100%;
+}
+
+#network-map-root .knm-loading {
+  align-items: center;
+  background: var(--knm-overlay-bg);
+  color: var(--knm-text);
+  display: flex;
+  font-size: 16px;
+  font-weight: 600;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  z-index: 5;
+}
+
+#network-map-root .knm-summary-content {
+  color: var(--knm-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 42vh;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+#network-map-root .knm-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+#network-map-root .knm-list li {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+
+#network-map-root .knm-empty,
+#network-map-root .knm-graph-empty {
+  color: var(--knm-muted);
+}
+
+#network-map-root [hidden] {
+  display: none !important;
+}
+
+@media (max-width: 1400px) {
+  #network-map-root .knm-main {
+    grid-template-columns: 1fr;
+  }
+
+  #network-map-root #knm-cy {
+    height: 65vh;
+    min-height: 520px;
+  }
+}
+
+#network-map-root .knm-graph-empty {
+  align-items: center;
+  display: flex;
+  font-size: 14px;
+  height: 100%;
+  justify-content: center;
+  min-height: 240px;
+  padding: 24px;
+  text-align: center;
+}
+
