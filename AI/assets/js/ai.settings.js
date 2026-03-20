@@ -43,6 +43,73 @@
         if (lists.provider && !lists.provider.querySelector('.ai-provider-row')) {
             addRow('provider');
         }
+
+        // AJAX form submission
+        var form = document.getElementById('ai-settings-form');
+
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                var submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Saving\u2026';
+                }
+
+                fetch(form.action, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: new FormData(form)
+                })
+                    .then(function (response) {
+                        return response.text().then(function (text) {
+                            try {
+                                return JSON.parse(text);
+                            }
+                            catch (e) {
+                                return {ok: false, error: 'Unexpected response from server.'};
+                            }
+                        });
+                    })
+                    .then(function (data) {
+                        if (data.ok) {
+                            window.location.reload();
+                        }
+                        else {
+                            showStatus(data.error || 'Save failed.', true);
+                        }
+                    })
+                    .catch(function (error) {
+                        showStatus('Save failed: ' + error.message, true);
+                    })
+                    .finally(function () {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Save settings';
+                        }
+                    });
+            });
+        }
+    }
+
+    function showStatus(message, isError) {
+        var existing = document.getElementById('ai-settings-status');
+
+        if (existing) {
+            existing.remove();
+        }
+
+        var el = document.createElement('div');
+        el.id = 'ai-settings-status';
+        el.className = 'ai-status ' + (isError ? 'ai-status-error' : 'ai-status-ok');
+        el.textContent = message;
+
+        var form = document.getElementById('ai-settings-form');
+
+        if (form) {
+            form.parentNode.insertBefore(el, form);
+        }
     }
 
     function addRow(type) {
@@ -75,4 +142,3 @@
         init();
     }
 }());
-

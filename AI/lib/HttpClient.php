@@ -50,17 +50,28 @@ class HttpClient {
         }
 
         $response_body = curl_exec($ch);
-
-        if ($response_body === false) {
-            $error = curl_error($ch);
-            curl_close($ch);
-
-            throw new RuntimeException('HTTP request failed: '.$error);
-        }
-
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $content_type = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $effective_url = (string) curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
         curl_close($ch);
+
+        if ($response_body === false || $curl_errno !== 0) {
+            $parts = ['HTTP request failed'];
+
+            if ($curl_errno !== 0) {
+                $parts[] = 'curl error '.$curl_errno;
+            }
+
+            if ($curl_error !== '') {
+                $parts[] = $curl_error;
+            }
+
+            $parts[] = 'URL: '.$effective_url;
+
+            throw new RuntimeException(implode(' — ', $parts));
+        }
 
         $json = null;
 
@@ -84,8 +95,25 @@ class HttpClient {
         $response = self::request($method, $url, $options);
 
         if ($response['status'] < 200 || $response['status'] >= 300) {
+            $error_detail = '';
+
+            if (is_array($response['json'])) {
+                $error_detail = $response['json']['error']['message']
+                    ?? $response['json']['error']
+                    ?? $response['json']['message']
+                    ?? '';
+
+                if (is_array($error_detail)) {
+                    $error_detail = json_encode($error_detail);
+                }
+            }
+
+            if ($error_detail === '') {
+                $error_detail = Util::truncate((string) $response['body'], 600);
+            }
+
             throw new RuntimeException(
-                'HTTP '.$response['status'].' from '.$url.': '.Util::truncate((string) $response['body'], 1200)
+                'HTTP '.$response['status'].' from '.$url.': '.$error_detail
             );
         }
 

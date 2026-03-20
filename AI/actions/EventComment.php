@@ -22,8 +22,9 @@ class EventComment extends CController {
 
     protected function doAction(): void {
         try {
-            $eventid = Util::cleanString($this->getInput('eventid', ''), 128);
-            $message = Util::cleanMultiline($this->getInput('message', ''), 100000);
+            $post = $_POST;
+            $eventid = Util::cleanString($post['eventid'] ?? '', 128);
+            $message = Util::cleanMultiline($post['message'] ?? '', 100000);
 
             if ($eventid === '') {
                 throw new \RuntimeException('Event ID is required.');

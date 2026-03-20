@@ -22,6 +22,8 @@
 }
 
 /* ── Dark theme overrides ── */
+html[theme="dark-theme"] .ai-page,
+html[theme="hc-dark"] .ai-page,
 .ai-page[data-ai-theme="dark"] {
     --ai-bg: #2b3648;
     --ai-bg-subtle: #1f2c3d;

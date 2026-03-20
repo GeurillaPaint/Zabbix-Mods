@@ -15,6 +15,7 @@ sudo semanage fcontext -a -t httpd_sys_content_t '/usr/share/zabbix/modules/AI(/
 # Apply the SELinux context
 sudo restorecon -Rv /usr/share/zabbix/modules/AI
 
+setsebool -P httpd_can_network_connect on
 
 # AI frontend module for Zabbix 7
 

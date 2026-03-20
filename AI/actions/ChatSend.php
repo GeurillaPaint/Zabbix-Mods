@@ -25,29 +25,30 @@ class ChatSend extends CController {
 
     protected function doAction(): void {
         try {
-            $message = Util::cleanMultiline($this->getInput('message', ''), 20000);
+            $post = $_POST;
+            $message = Util::cleanMultiline($post['message'] ?? '', 20000);
 
             if ($message === '') {
                 throw new \RuntimeException('Message cannot be empty.');
             }
 
             $config = Config::get();
-            $provider = Config::getProvider($config, $this->getInput('provider_id', ''), 'chat');
+            $provider = Config::getProvider($config, $post['provider_id'] ?? '', 'chat');
 
             if ($provider === null) {
                 throw new \RuntimeException('No provider is configured.');
             }
 
             $history = Util::normalizeMessages(
-                Util::decodeJsonArray($this->getInput('history_json', '[]')),
+                Util::decodeJsonArray($post['history_json'] ?? '[]'),
                 (int) ($config['chat']['max_history_messages'] ?? 12)
             );
 
             $context = [
-                'eventid' => Util::cleanString($this->getInput('eventid', ''), 128),
-                'hostname' => Util::cleanString($this->getInput('hostname', ''), 255),
-                'problem_summary' => Util::cleanMultiline($this->getInput('problem_summary', ''), 2000),
-                'extra_context' => Util::cleanMultiline($this->getInput('extra_context', ''), 6000)
+                'eventid' => Util::cleanString($post['eventid'] ?? '', 128),
+                'hostname' => Util::cleanString($post['hostname'] ?? '', 255),
+                'problem_summary' => Util::cleanMultiline($post['problem_summary'] ?? '', 2000),
+                'extra_context' => Util::cleanMultiline($post['extra_context'] ?? '', 6000)
             ];
 
             $zabbix_api = ZabbixApiClient::fromConfig($config);

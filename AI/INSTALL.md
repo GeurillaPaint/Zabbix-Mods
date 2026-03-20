@@ -42,6 +42,7 @@ If SELinux is enforcing:
 ```bash
 sudo semanage fcontext -a -t httpd_sys_content_t '/usr/share/zabbix/ui/modules/AI(/.*)?'
 sudo restorecon -Rv /usr/share/zabbix/ui/modules/AI
+setsebool -P httpd_can_network_connect on
 ```
 
 ## 4. Required PHP modules

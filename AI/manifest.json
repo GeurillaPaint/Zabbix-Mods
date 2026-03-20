@@ -16,16 +16,20 @@
       "view": "ai.settings"
     },
     "ai.settings.save": {
-      "class": "SettingsSave"
+      "class": "SettingsSave",
+      "layout": "layout.json"
     },
     "ai.chat.send": {
-      "class": "ChatSend"
+      "class": "ChatSend",
+      "layout": "layout.json"
     },
     "ai.event.comment": {
-      "class": "EventComment"
+      "class": "EventComment",
+      "layout": "layout.json"
     },
     "ai.webhook": {
-      "class": "Webhook"
+      "class": "Webhook",
+      "layout": "layout.json"
     }
   },
   "assets": {
