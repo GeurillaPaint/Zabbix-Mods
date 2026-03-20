@@ -18,8 +18,12 @@ final class NetworkMapData extends CController {
 
     protected function checkInput(): bool {
         $force = $this->getInput('force', 0);
+        $days = $this->getInput('days', null);
 
-        return $force === 0 || $force === '0' || $force === 1 || $force === '1' || $force === null;
+        $force_ok = $force === 0 || $force === '0' || $force === 1 || $force === '1' || $force === null;
+        $days_ok = $days === null || (is_numeric($days) && (int) $days >= 1 && (int) $days <= 90);
+
+        return $force_ok && $days_ok;
     }
 
     protected function checkPermissions(): bool {
@@ -29,8 +33,11 @@ final class NetworkMapData extends CController {
     protected function doAction(): void {
         try {
             $force_refresh = (string) $this->getInput('force', '0') === '1';
+            $days_input = $this->getInput('days', null);
+            $history_hours = $days_input !== null ? max(1, (int) $days_input) * 24 : null;
+
             $builder = new MapBuilder();
-            $payload = $builder->getMap($force_refresh, $this->currentUserId());
+            $payload = $builder->getMap($force_refresh, $this->currentUserId(), $history_hours);
 
             $this->respondJson($payload);
         }

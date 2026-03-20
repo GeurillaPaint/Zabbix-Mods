@@ -138,13 +138,18 @@
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    const rules = [];
+    const includes = [];
+    const excludes = [];
 
-    for (const token of tokens) {
+    for (const raw of tokens) {
+      const exclude = raw.startsWith("!");
+      const token = exclude ? raw.slice(1).trim() : raw;
+      const target = exclude ? excludes : includes;
+
       if (/^\d+$/.test(token)) {
         const port = normalizePort(token);
         if (port !== null) {
-          rules.push({ type: "single", port });
+          target.push({ type: "single", port });
         }
         continue;
       }
@@ -162,12 +167,19 @@
           [min, max] = [max, min];
         }
 
-        rules.push({ type: "range", min, max });
+        target.push({ type: "range", min, max });
       }
     }
 
-    if (rules.length === 0) {
+    if (includes.length === 0 && excludes.length === 0) {
       return null;
+    }
+
+    function ruleMatches(rule, value) {
+      if (rule.type === "single") {
+        return value === rule.port;
+      }
+      return value >= rule.min && value <= rule.max;
     }
 
     return function matchesPort(port) {
@@ -176,13 +188,15 @@
         return false;
       }
 
-      return rules.some((rule) => {
-        if (rule.type === "single") {
-          return value === rule.port;
-        }
+      if (excludes.length && excludes.some((r) => ruleMatches(r, value))) {
+        return false;
+      }
 
-        return value >= rule.min && value <= rule.max;
-      });
+      if (includes.length) {
+        return includes.some((r) => ruleMatches(r, value));
+      }
+
+      return true;
     };
   }
 
@@ -329,14 +343,26 @@
   function edgeMatches(data, srcTokens, dstTokens, portMatcher, excludePublic, excludeNoisePorts, ipFilters) {
     const srcIp = data.srcIp || data.src_ip || "";
     const dstIp = data.dstIp || data.dst_ip || "";
+
+    // Build name + IP strings for matching, including node primary IP
+    const nodeMap = (global.KNMState && global.KNMState.rawNodeMap instanceof Map) ? global.KNMState.rawNodeMap : null;
+    const srcNode = nodeMap && nodeMap.get(data.source);
+    const dstNode = nodeMap && nodeMap.get(data.target);
+    const srcNodeIp = (srcNode && srcNode.data && srcNode.data.ip) || "";
+    const dstNodeIp = (dstNode && dstNode.data && dstNode.data.ip) || "";
+
     const srcName = [data.sourceLabel, data.source].filter(Boolean).join(" ");
     const dstName = [data.targetLabel, data.target].filter(Boolean).join(" ");
 
-    if (!matchesEndpointFilter(srcTokens, srcName, srcIp)) {
+    // Combine edge IP and node primary IP for matching
+    const srcIpCombined = [srcIp, srcNodeIp].filter(Boolean).join(" ");
+    const dstIpCombined = [dstIp, dstNodeIp].filter(Boolean).join(" ");
+
+    if (!matchesEndpointFilter(srcTokens, srcName, srcIpCombined)) {
       return false;
     }
 
-    if (!matchesEndpointFilter(dstTokens, dstName, dstIp)) {
+    if (!matchesEndpointFilter(dstTokens, dstName, dstIpCombined)) {
       return false;
     }
 

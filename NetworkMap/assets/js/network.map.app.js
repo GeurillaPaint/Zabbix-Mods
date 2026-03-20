@@ -75,7 +75,7 @@
           <label class="knm-form-field">
             <span>Source filter</span>
             <div class="knm-autocomplete">
-              <input id="knm-filterSrc" type="text" placeholder="hostname or IP" autocomplete="off">
+              <input id="knm-filterSrc" type="text" placeholder="host1, host2, 10.0.0.1" autocomplete="off">
               <ul id="knm-filterSrc-ac" class="knm-autocomplete-list"></ul>
             </div>
           </label>
@@ -83,19 +83,25 @@
           <label class="knm-form-field">
             <span>Destination filter</span>
             <div class="knm-autocomplete">
-              <input id="knm-filterDst" type="text" placeholder="hostname or IP" autocomplete="off">
+              <input id="knm-filterDst" type="text" placeholder="host1, host2, 10.0.0.1" autocomplete="off">
               <ul id="knm-filterDst-ac" class="knm-autocomplete-list"></ul>
             </div>
           </label>
 
           <label class="knm-form-field">
             <span>Port filter</span>
-            <input id="knm-filterPort" type="text" placeholder="443 or 80-443">
+            <input id="knm-filterPort" type="text" placeholder="443,80-443,!135">
           </label>
 
           <label class="knm-form-field">
             <span>Excluded IPs / CIDRs / ranges</span>
             <input id="knm-filterIp" type="text" placeholder="10.0.0.0/8,192.168.1.10-192.168.1.40">
+          </label>
+
+          <label class="knm-form-field">
+            <span>History (days)</span>
+            <input id="knm-historyDays" type="number" value="1" min="1" max="90" step="1">
+            <span class="knm-field-warning" id="knm-historyDaysWarning" hidden>More days = slower loading</span>
           </label>
 
           <label class="knm-form-field">
@@ -126,17 +132,95 @@
           </label>
         </div>
 
-        <div class="knm-help">
-          Leave <strong>Host scope</strong> empty for the full graph. When a host is selected, only
-          traffic where that host is the source or destination is shown.
-        </div>
-
         <div class="knm-actions">
           <button id="knm-btnApply" class="knm-btn" type="button">Draw graph</button>
           <button id="knm-btnRefreshData" class="knm-btn knm-btn-secondary" type="button">Refresh data</button>
+          <button id="knm-btnGuide" class="knm-btn knm-btn-secondary" type="button">Guide</button>
         </div>
 
         <div id="knm-dataStatus" class="knm-status" aria-live="polite">Loading network map…</div>
+
+        <div id="knm-guide" class="knm-guide" hidden>
+          <div class="knm-guide-header">
+            <h3>Guide</h3>
+            <button id="knm-closeGuide" class="knm-panel-toggle" type="button">Close</button>
+          </div>
+
+          <div class="knm-guide-body">
+            <h4>About this map</h4>
+            <p>
+              The Network Map visualizes observed <strong>established TCP connections</strong> between
+              hosts monitored by Zabbix. Data is collected via <strong>Zabbix Agent 2</strong> using the
+              <em>Linux Network Map</em> and <em>Windows Network Map</em> templates. Each template
+              produces a JSON item (<code>linux-network-connections</code> /
+              <code>windows-network-connections</code>) containing incoming and outgoing connections
+              discovered on the host while the item is active and fetching data.
+            </p>
+
+            <h4>Node colors</h4>
+            <ul>
+              <li><strong style="color:#007bff;">Blue</strong> — monitored Zabbix host (resolved by IP)</li>
+              <li><strong style="color:#6c757d;">Gray</strong> — private IP not resolved to a host</li>
+              <li><strong style="color:#ff3366;">Red</strong> — external / public IP</li>
+            </ul>
+
+            <h4>Host scope</h4>
+            <p>
+              Leave empty to show the full graph. Select a host to show only traffic where that host is the source or destination.
+            </p>
+
+            <h4>Source &amp; Destination filters</h4>
+            <p>
+              Filter by hostname or IP. Supports <strong>multiple values</strong> separated by commas.<br>
+              Example: <code>web-server, db-01, 10.0.1.5</code><br>
+              Matching is case-insensitive substring — <code>web</code> matches <code>web-server-01</code>.
+            </p>
+
+            <h4>Port filter</h4>
+            <p>Supports single ports, ranges, and exclusions using comma separation:</p>
+            <ul>
+              <li><code>443</code> — show only port 443</li>
+              <li><code>80-443</code> — show ports 80 through 443</li>
+              <li><code>443,8080,3306</code> — show ports 443, 8080, and 3306</li>
+              <li><code>!135</code> — exclude port 135</li>
+              <li><code>!49152-65535</code> — exclude the dynamic port range</li>
+              <li><code>80-1024,!135,!111</code> — ports 80–1024 but exclude 135 and 111</li>
+            </ul>
+
+            <h4>Excluded IPs / CIDRs / ranges</h4>
+            <p>Hide traffic involving specific IPs. Comma-separated, supports:</p>
+            <ul>
+              <li>Single IP: <code>192.168.1.10</code></li>
+              <li>CIDR: <code>10.0.0.0/8</code></li>
+              <li>Range: <code>192.168.1.10-192.168.1.40</code></li>
+            </ul>
+
+            <h4>History (days)</h4>
+            <p>
+              Number of days of historic data to load. Default is <strong>1 day</strong>.
+              Increasing this value will include more connection history but will make the map
+              <strong>slower to load</strong> and render, especially in large environments.
+            </p>
+
+            <h4>Checkboxes</h4>
+            <ul>
+              <li><strong>Hide RPC / high ports</strong> — hides ports 111, 135, 593 and dynamic ports (49152+)</li>
+              <li><strong>Exclude public IPs</strong> — hides edges to external/public IP addresses</li>
+            </ul>
+
+            <h4>Layout controls</h4>
+            <ul>
+              <li><strong>Minimum separation</strong> — spacing between nodes (10–500)</li>
+              <li><strong>Horizontal / Vertical scale</strong> — stretch or compress the layout</li>
+            </ul>
+
+            <h4>Traffic summary</h4>
+            <p>
+              Click any node to open the traffic summary panel. Summary filters support
+              comma-separated tokens. Prefix a token with <code>!</code> to exclude it.
+            </p>
+          </div>
+        </div>
       </section>
 
       <div class="knm-main">
@@ -358,6 +442,21 @@
     return { renderList };
   }
 
+  /* ── Multi-value autocomplete helpers ─────────────────── */
+
+  function getLastToken(str) {
+    const parts = str.split(",");
+    return (parts[parts.length - 1] || "").trim();
+  }
+
+  function replaceLastToken(str, replacement) {
+    const parts = str.split(",");
+    parts[parts.length - 1] = " " + replacement;
+    // Trim leading space on the first token only
+    const result = parts.join(",");
+    return result.replace(/^,?\s*/, "");
+  }
+
   /* ── Host scope data & autocomplete ────────────────────── */
 
   let hostItems = []; // { value, label } sorted
@@ -425,18 +524,22 @@
 
       if (srcId && !srcSet.has(srcId)) {
         const node = state.rawNodeMap && state.rawNodeMap.get(srcId);
+        const shortLabel = (node && node.data && node.data.shortLabel) || srcLabel;
+        const displayLabel = (node && node.data && node.data.label) || srcLabel;
         srcSet.set(srcId, {
-          value: (node && node.data && node.data.label) || srcLabel,
-          label: (node && node.data && node.data.label) || srcLabel,
+          value: shortLabel,
+          label: displayLabel,
           ip: (node && node.data && node.data.ip) || d.srcIp || d.src_ip || "",
         });
       }
 
       if (dstId && !dstSet.has(dstId)) {
         const node = state.rawNodeMap && state.rawNodeMap.get(dstId);
+        const shortLabel = (node && node.data && node.data.shortLabel) || dstLabel;
+        const displayLabel = (node && node.data && node.data.label) || dstLabel;
         dstSet.set(dstId, {
-          value: (node && node.data && node.data.label) || dstLabel,
-          label: (node && node.data && node.data.label) || dstLabel,
+          value: shortLabel,
+          label: displayLabel,
           ip: (node && node.data && node.data.ip) || d.dstIp || d.dst_ip || "",
         });
       }
@@ -722,7 +825,11 @@
       return null;
     }
 
-    const url = force ? withQuery(root.dataset.dataUrl, { force: "1" }) : root.dataset.dataUrl;
+    const historyDays = Math.max(1, Number.parseInt(((getEl("knm-historyDays") || {}).value || "1").trim(), 10) || 1);
+    const params = {};
+    if (force) params.force = "1";
+    if (historyDays !== 1) params.days = String(historyDays);
+    const url = Object.keys(params).length ? withQuery(root.dataset.dataUrl, params) : root.dataset.dataUrl;
 
     if (showBusyOverlay) {
       showBusy(true);
@@ -871,42 +978,69 @@
       });
     }
 
-    // Source filter: autocomplete suggestions
+    // Source filter: autocomplete suggestions (multi-value aware)
     if (srcInput && srcList) {
       buildAutocomplete(
         srcInput,
         srcList,
         (query) => {
-          const q = (query || "").toLowerCase();
+          const q = getLastToken(query || "").toLowerCase();
           if (!q) return [];
           return srcSuggestions.filter((item) =>
             item.label.toLowerCase().includes(q) ||
+            item.value.toLowerCase().includes(q) ||
             (item.ip && item.ip.toLowerCase().includes(q))
           );
         },
         (item) => {
-          srcInput.value = item.label;
+          srcInput.value = replaceLastToken(srcInput.value, item.value);
         }
       );
     }
 
-    // Destination filter: autocomplete suggestions
+    // Destination filter: autocomplete suggestions (multi-value aware)
     if (dstInput && dstList) {
       buildAutocomplete(
         dstInput,
         dstList,
         (query) => {
-          const q = (query || "").toLowerCase();
+          const q = getLastToken(query || "").toLowerCase();
           if (!q) return [];
           return dstSuggestions.filter((item) =>
             item.label.toLowerCase().includes(q) ||
+            item.value.toLowerCase().includes(q) ||
             (item.ip && item.ip.toLowerCase().includes(q))
           );
         },
         (item) => {
-          dstInput.value = item.label;
+          dstInput.value = replaceLastToken(dstInput.value, item.value);
         }
       );
+    }
+
+    // Guide panel toggle
+    const guideButton = getEl("knm-btnGuide");
+    const guidePanel = getEl("knm-guide");
+    const closeGuideButton = getEl("knm-closeGuide");
+    if (guideButton && guidePanel) {
+      guideButton.addEventListener("click", () => {
+        guidePanel.hidden = !guidePanel.hidden;
+      });
+    }
+    if (closeGuideButton && guidePanel) {
+      closeGuideButton.addEventListener("click", () => {
+        guidePanel.hidden = true;
+      });
+    }
+
+    // History days warning
+    const historyDaysInput = getEl("knm-historyDays");
+    const historyDaysWarning = getEl("knm-historyDaysWarning");
+    if (historyDaysInput && historyDaysWarning) {
+      historyDaysInput.addEventListener("input", () => {
+        const days = Number.parseInt(historyDaysInput.value, 10) || 1;
+        historyDaysWarning.hidden = days <= 1;
+      });
     }
 
     [getEl("knm-excludeNoisePorts"), getEl("knm-excludePub")]

@@ -10,8 +10,10 @@ final class MapBuilder {
         $this->cache = $cache ?? new Cache();
     }
 
-    public function getMap(bool $force_refresh, string $user_id): array {
-        $cache_key = 'map-user-' . preg_replace('/[^A-Za-z0-9._-]/', '_', $user_id ?: '0');
+    public function getMap(bool $force_refresh, string $user_id, ?int $history_hours = null): array {
+        $effective_hours = $history_hours ?? (int) Config::get('history_window_hours', 24);
+        $cache_key = 'map-user-' . preg_replace('/[^A-Za-z0-9._-]/', '_', $user_id ?: '0')
+            . '-h' . $effective_hours;
         $ttl = (int) Config::get('cache_ttl_seconds', 1800);
 
         if (!$force_refresh) {
@@ -28,7 +30,7 @@ final class MapBuilder {
         }
 
         try {
-            $payload = $this->build();
+            $payload = $this->build($effective_hours);
             $payload['meta'] = array_merge($payload['meta'] ?? [], [
                 'cached' => false,
                 'cache_age_seconds' => 0
@@ -57,10 +59,10 @@ final class MapBuilder {
         }
     }
 
-    private function build(): array {
+    private function build(int $history_hours = 24): array {
         $generated_at = time();
         $time_till = $generated_at;
-        $time_from = $generated_at - ((int) Config::get('history_window_hours', 24) * 3600);
+        $time_from = $generated_at - ($history_hours * 3600);
 
         [$ip_to_node, $host_nodes] = $this->getNodeMaps();
 
@@ -263,7 +265,7 @@ final class MapBuilder {
             'time_from_iso' => Helpers::iso8601($time_from),
             'time_till' => $time_till,
             'time_till_iso' => Helpers::iso8601($time_till),
-            'history_window_hours' => (int) Config::get('history_window_hours', 24),
+            'history_window_hours' => $history_hours,
             'nodes_count' => count($nodes),
             'edges_count' => count($edges),
             'host_label_source' => (string) Config::get('host_label_source', 'visible'),

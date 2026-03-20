@@ -360,3 +360,73 @@
   padding: 4px 8px;
 }
 
+/* Field-level warnings */
+#network-map-root .knm-field-warning {
+  color: var(--knm-danger);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Guide panel */
+#network-map-root .knm-guide {
+  border-top: 1px solid var(--knm-panel-border);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+#network-map-root .knm-guide-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+#network-map-root .knm-guide-header h3 {
+  color: var(--knm-text);
+  font-size: 15px;
+  margin: 0;
+}
+
+#network-map-root .knm-guide-body {
+  color: var(--knm-text);
+  font-size: 13px;
+  line-height: 1.55;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+#network-map-root .knm-guide-body h4 {
+  border-bottom: 1px solid var(--knm-panel-border);
+  color: var(--knm-text);
+  font-size: 13px;
+  margin: 14px 0 6px;
+  padding-bottom: 4px;
+}
+
+#network-map-root .knm-guide-body h4:first-child {
+  margin-top: 0;
+}
+
+#network-map-root .knm-guide-body p {
+  margin: 0 0 8px;
+}
+
+#network-map-root .knm-guide-body ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+#network-map-root .knm-guide-body li {
+  margin: 3px 0;
+}
+
+#network-map-root .knm-guide-body code {
+  background: var(--knm-input-bg);
+  border: 1px solid var(--knm-input-border);
+  border-radius: 3px;
+  font-size: 12px;
+  padding: 1px 4px;
+}
+
