@@ -12,6 +12,6 @@ sudo find /usr/share/zabbix/modules/MODULE_FOLDER_NAME -type d -exec chmod 755 {
 sudo find /usr/share/zabbix/modules/MODULE_FOLDER_NAME -type f -exec chmod 644 {} \;
 
 ### SELinux
-sudo semanage fcontext -a -t httpd_sys_content_t '/usr/share/zabbix/modules/MODULE_FOLDER_NAME(/.*)?'
-sudo restorecon -Rv /usr/share/zabbix/modules/MODULE_FOLDER_NAME
+sudo semanage fcontext -a -t httpd_sys_content_t '/usr/share/zabbix/modules/MODULE_FOLDER_NAME(/.*)?'<br>
+sudo restorecon -Rv /usr/share/zabbix/modules/MODULE_FOLDER_NAME<br>
 setsebool -P httpd_can_network_connect on
