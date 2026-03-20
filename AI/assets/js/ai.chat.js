@@ -14,7 +14,12 @@
         var sendButton = document.getElementById('ai-send-button');
         var providerField = document.getElementById('ai-provider-id');
         var eventidField = document.getElementById('ai-eventid');
+        var eventidSearchField = document.getElementById('ai-eventid-search');
+        var eventidList = document.getElementById('ai-eventid-list');
         var hostnameField = document.getElementById('ai-hostname');
+        var hostnameIdField = document.getElementById('ai-hostname-id');
+        var hostnameSearchField = document.getElementById('ai-hostname-search');
+        var hostnameList = document.getElementById('ai-hostname-list');
         var problemSummaryField = document.getElementById('ai-problem-summary');
         var extraContextField = document.getElementById('ai-extra-context');
         var clearButton = document.getElementById('ai-clear-session');
@@ -23,6 +28,8 @@
 
         var sendUrl = root.dataset.sendUrl;
         var commentUrl = root.dataset.commentUrl;
+        var hostsUrl = root.dataset.hostsUrl;
+        var problemsUrl = root.dataset.problemsUrl;
         var chatCsrf = root.dataset.chatCsrf;
         var commentCsrf = root.dataset.commentCsrf;
         var historyLimit = parseInt(root.dataset.historyLimit || '12', 10);
@@ -31,15 +38,33 @@
 
         var HISTORY_KEY = 'zbx_ai_chat_history_v1';
         var CONTEXT_KEY = 'zbx_ai_chat_context_v1';
+        var SEVERITY_LABELS = ['Not classified', 'Information', 'Warning', 'Average', 'High', 'Disaster'];
+
+        var allHosts = [];
+        var allProblems = [];
+        var problemsLoaded = false;
+        var problemsFetchController = null;
 
         var history = loadJson(HISTORY_KEY, []);
         var context = loadJson(CONTEXT_KEY, {});
 
-        if (!eventidField.value && context.eventid) {
-            eventidField.value = context.eventid;
-        }
         if (!hostnameField.value && context.hostname) {
             hostnameField.value = context.hostname;
+            hostnameSearchField.value = context.hostname;
+        }
+        if (hostnameField.value) {
+            hostnameSearchField.value = hostnameField.value;
+        }
+        if (!eventidField.value && context.eventid) {
+            eventidField.value = context.eventid;
+            if (context.eventid_label) {
+                eventidSearchField.value = context.eventid_label;
+            } else {
+                eventidSearchField.value = context.eventid;
+            }
+        }
+        if (eventidField.value && !eventidSearchField.value) {
+            eventidSearchField.value = eventidField.value;
         }
         if (!problemSummaryField.value && context.problem_summary) {
             problemSummaryField.value = context.problem_summary;
@@ -50,12 +75,19 @@
         if (context.provider_id && providerField && providerField.querySelector('option[value="' + cssEscape(context.provider_id) + '"]')) {
             providerField.value = context.provider_id;
         }
+        if (context.hostid) {
+            hostnameIdField.value = context.hostid;
+        }
 
         history = normalizeHistory(history, historyLimit);
         renderHistory();
         updatePostButtonState();
 
-        [providerField, eventidField, hostnameField, problemSummaryField, extraContextField].forEach(function (element) {
+        if (hasZabbixApi) {
+            loadHosts();
+        }
+
+        [providerField, problemSummaryField, extraContextField].forEach(function (element) {
             if (!element) {
                 return;
             }
@@ -63,6 +95,147 @@
             element.addEventListener('input', saveContext);
             element.addEventListener('change', saveContext);
         });
+
+        initSearchableDropdown(hostnameSearchField, hostnameList, {
+            getItems: function () { return allHosts; },
+            formatItem: function (host) {
+                var label = host.host;
+                if (host.name && host.name !== host.host) {
+                    label += ' (' + host.name + ')';
+                }
+                return label;
+            },
+            filterItem: function (host, query) {
+                var q = query.toLowerCase();
+                return host.host.toLowerCase().indexOf(q) !== -1 ||
+                    (host.name && host.name.toLowerCase().indexOf(q) !== -1);
+            },
+            onSelect: function (host) {
+                hostnameField.value = host.host;
+                hostnameIdField.value = host.hostid;
+                hostnameSearchField.value = host.host;
+                eventidField.value = '';
+                eventidSearchField.value = '';
+                allProblems = [];
+                problemsLoaded = false;
+                saveContext();
+            },
+            onClear: function () {
+                hostnameField.value = '';
+                hostnameIdField.value = '';
+                allProblems = [];
+                problemsLoaded = false;
+                saveContext();
+            }
+        });
+
+        initSearchableDropdown(eventidSearchField, eventidList, {
+            serverSide: true,
+            getItems: function () { return allProblems; },
+            formatItem: function (problem) {
+                var sev = SEVERITY_LABELS[parseInt(problem.severity, 10)] || 'Unknown';
+                return problem.eventid + ' \u2014 [' + sev + '] ' + problem.name;
+            },
+            filterItem: function (problem, query) {
+                var q = query.toLowerCase();
+                return problem.eventid.indexOf(q) !== -1 ||
+                    problem.name.toLowerCase().indexOf(q) !== -1;
+            },
+            onSearch: function (query) {
+                searchProblems(query);
+            },
+            onSelect: function (problem) {
+                eventidField.value = problem.eventid;
+                var sev = SEVERITY_LABELS[parseInt(problem.severity, 10)] || 'Unknown';
+                eventidSearchField.value = problem.eventid + ' \u2014 [' + sev + '] ' + problem.name;
+                if (problem.name && !problemSummaryField.value) {
+                    problemSummaryField.value = problem.name;
+                }
+                saveContext();
+            },
+            onClear: function () {
+                eventidField.value = '';
+                saveContext();
+            },
+            onFocus: function () {
+                if (!problemsLoaded) {
+                    searchProblems('');
+                }
+            }
+        });
+
+        function loadHosts() {
+            if (!hostsUrl) return;
+            fetch(hostsUrl, { method: 'GET', credentials: 'same-origin' })
+                .then(handleJsonResponse)
+                .then(function (response) {
+                    if (response.ok && Array.isArray(response.hosts)) {
+                        allHosts = response.hosts;
+                        if (hostnameField.value && !hostnameIdField.value) {
+                            for (var i = 0; i < allHosts.length; i++) {
+                                if (allHosts[i].host === hostnameField.value) {
+                                    hostnameIdField.value = allHosts[i].hostid;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                })
+                .catch(function () {});
+        }
+
+        function searchProblems(query) {
+            if (!problemsUrl) return;
+
+            if (problemsFetchController) {
+                problemsFetchController.abort();
+            }
+            problemsFetchController = new AbortController();
+
+            var url = problemsUrl;
+            var sep = url.indexOf('?') !== -1 ? '&' : '?';
+            var hostid = hostnameIdField.value || '';
+            if (hostid) {
+                url += sep + 'hostid=' + encodeURIComponent(hostid);
+                sep = '&';
+            }
+            if (query) {
+                url += sep + 'search=' + encodeURIComponent(query);
+            }
+
+            fetch(url, { method: 'GET', credentials: 'same-origin', signal: problemsFetchController.signal })
+                .then(handleJsonResponse)
+                .then(function (response) {
+                    if (response.ok && Array.isArray(response.problems)) {
+                        allProblems = response.problems;
+                        problemsLoaded = true;
+                        renderDropdownItems(eventidList, {
+                            getItems: function () { return allProblems; },
+                            formatItem: function (problem) {
+                                var sev = SEVERITY_LABELS[parseInt(problem.severity, 10)] || 'Unknown';
+                                return problem.eventid + ' \u2014 [' + sev + '] ' + problem.name;
+                            },
+                            filterItem: function () { return true; },
+                            onSelect: function (problem) {
+                                eventidField.value = problem.eventid;
+                                var sev = SEVERITY_LABELS[parseInt(problem.severity, 10)] || 'Unknown';
+                                eventidSearchField.value = problem.eventid + ' \u2014 [' + sev + '] ' + problem.name;
+                                if (problem.name && !problemSummaryField.value) {
+                                    problemSummaryField.value = problem.name;
+                                }
+                                saveContext();
+                                eventidList.classList.add('ai-hidden');
+                            }
+                        }, '');
+                        eventidList.classList.remove('ai-hidden');
+                    }
+                })
+                .catch(function (e) {
+                    if (e.name !== 'AbortError') {
+                        problemsLoaded = false;
+                    }
+                });
+        }
 
         composeForm.addEventListener('submit', function (event) {
             event.preventDefault();
@@ -136,8 +309,17 @@
             if (eventidField) {
                 eventidField.value = '';
             }
+            if (eventidSearchField) {
+                eventidSearchField.value = '';
+            }
             if (hostnameField) {
                 hostnameField.value = '';
+            }
+            if (hostnameIdField) {
+                hostnameIdField.value = '';
+            }
+            if (hostnameSearchField) {
+                hostnameSearchField.value = '';
             }
             if (problemSummaryField) {
                 problemSummaryField.value = '';
@@ -145,6 +327,8 @@
             if (extraContextField) {
                 extraContextField.value = '';
             }
+            allProblems = [];
+            problemsLoaded = false;
             renderHistory();
             showSideStatus('Session cleared.', false);
             updatePostButtonState();
@@ -249,7 +433,9 @@
             var currentContext = {
                 provider_id: providerField ? providerField.value : '',
                 eventid: eventidField ? eventidField.value : '',
+                eventid_label: eventidSearchField ? eventidSearchField.value : '',
                 hostname: hostnameField ? hostnameField.value : '',
+                hostid: hostnameIdField ? hostnameIdField.value : '',
                 problem_summary: problemSummaryField ? problemSummaryField.value : '',
                 extra_context: extraContextField ? extraContextField.value : ''
             };
@@ -358,6 +544,123 @@
 
     function cssEscape(value) {
         return String(value).replace(/["\\]/g, '\\$&');
+    }
+
+    function initSearchableDropdown(searchField, listEl, opts) {
+        var debounceTimer = null;
+        var debounceMs = opts.serverSide ? 350 : 150;
+
+        searchField.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                var query = (searchField.value || '').trim();
+                if (opts.serverSide && opts.onSearch) {
+                    opts.onSearch(query);
+                } else {
+                    renderDropdownItems(listEl, opts, query);
+                    listEl.classList.remove('ai-hidden');
+                }
+            }, debounceMs);
+        });
+
+        searchField.addEventListener('focus', function () {
+            if (opts.serverSide && opts.onFocus) {
+                opts.onFocus();
+            } else if (!opts.serverSide) {
+                var query = (searchField.value || '').trim();
+                renderDropdownItems(listEl, opts, query);
+                listEl.classList.remove('ai-hidden');
+            }
+        });
+
+        document.addEventListener('mousedown', function (e) {
+            if (!searchField.parentNode.contains(e.target)) {
+                listEl.classList.add('ai-hidden');
+            }
+        });
+
+        searchField.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                listEl.classList.add('ai-hidden');
+                searchField.blur();
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                var first = listEl.querySelector('.ai-dropdown-item');
+                if (first) first.focus();
+            }
+        });
+
+        listEl.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                var next = document.activeElement && document.activeElement.nextElementSibling;
+                if (next && next.classList.contains('ai-dropdown-item')) next.focus();
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                var prev = document.activeElement && document.activeElement.previousElementSibling;
+                if (prev && prev.classList.contains('ai-dropdown-item')) {
+                    prev.focus();
+                } else {
+                    searchField.focus();
+                }
+            }
+            if (e.key === 'Escape') {
+                listEl.classList.add('ai-hidden');
+                searchField.focus();
+            }
+        });
+
+        searchField.addEventListener('change', function () {
+            if (searchField.value.trim() === '' && opts.onClear) {
+                opts.onClear();
+            }
+        });
+    }
+
+    function renderDropdownItems(listEl, opts, query) {
+        listEl.innerHTML = '';
+        var items = opts.getItems();
+        var shown = 0;
+        var MAX = 100;
+
+        for (var i = 0; i < items.length && shown < MAX; i++) {
+            if (query && !opts.filterItem(items[i], query)) {
+                continue;
+            }
+
+            var div = document.createElement('div');
+            div.className = 'ai-dropdown-item';
+            div.textContent = opts.formatItem(items[i]);
+            div.tabIndex = 0;
+            div.dataset.index = String(i);
+
+            (function (item) {
+                div.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    opts.onSelect(item);
+                    listEl.classList.add('ai-hidden');
+                });
+                div.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        opts.onSelect(item);
+                        listEl.classList.add('ai-hidden');
+                    }
+                });
+            })(items[i]);
+
+            listEl.appendChild(div);
+            shown++;
+        }
+
+        if (shown === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'ai-dropdown-empty';
+            empty.textContent = 'No matches found.';
+            listEl.appendChild(empty);
+        }
     }
 
     if (document.readyState === 'loading') {

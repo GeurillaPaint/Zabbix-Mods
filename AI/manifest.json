@@ -27,6 +27,14 @@
       "class": "EventComment",
       "layout": "layout.json"
     },
+    "ai.chat.hosts": {
+      "class": "ChatHosts",
+      "layout": "layout.json"
+    },
+    "ai.chat.problems": {
+      "class": "ChatProblems",
+      "layout": "layout.json"
+    },
     "ai.webhook": {
       "class": "Webhook",
       "layout": "layout.json"

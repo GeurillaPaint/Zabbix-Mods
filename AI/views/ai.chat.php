@@ -12,6 +12,14 @@ $event_comment_url = (new CUrl('zabbix.php'))
     ->setArgument('action', 'ai.event.comment')
     ->getUrl();
 
+$hosts_url = (new CUrl('zabbix.php'))
+    ->setArgument('action', 'ai.chat.hosts')
+    ->getUrl();
+
+$problems_url = (new CUrl('zabbix.php'))
+    ->setArgument('action', 'ai.chat.problems')
+    ->getUrl();
+
 $settings_url = (new CUrl('zabbix.php'))
     ->setArgument('action', 'ai.settings')
     ->getUrl();
@@ -39,6 +47,8 @@ ob_start();
     data-csrf-field-name="<?= $h(CCsrfTokenHelper::CSRF_TOKEN_NAME) ?>"
     data-history-limit="<?= $h($data['history_limit'] ?? 12) ?>"
     data-has-zabbix-api="<?= $h(($data['has_zabbix_api'] ?? false) ? '1' : '0') ?>"
+    data-hosts-url="<?= $h($hosts_url) ?>"
+    data-problems-url="<?= $h($problems_url) ?>"
 >
     <div class="ai-header">
         <div>
@@ -81,11 +91,20 @@ ob_start();
                 <?php endforeach; ?>
             </select>
 
-            <label class="ai-label" for="ai-eventid"><?= $h(_('Event ID (optional)')) ?></label>
-            <input id="ai-eventid" class="ai-input" type="text" value="<?= $h($data['initial_eventid'] ?? '') ?>" placeholder="1234567">
+            <label class="ai-label" for="ai-hostname-search"><?= $h(_('Hostname (optional)')) ?></label>
+            <div class="ai-searchable-dropdown" id="ai-hostname-dropdown">
+                <input id="ai-hostname-search" class="ai-input" type="text" autocomplete="off" placeholder="<?= $h(_('Search hosts…')) ?>">
+                <input id="ai-hostname" type="hidden" value="<?= $h($data['initial_hostname'] ?? '') ?>">
+                <input id="ai-hostname-id" type="hidden" value="">
+                <div class="ai-dropdown-list ai-hidden" id="ai-hostname-list"></div>
+            </div>
 
-            <label class="ai-label" for="ai-hostname"><?= $h(_('Hostname (optional)')) ?></label>
-            <input id="ai-hostname" class="ai-input" type="text" value="<?= $h($data['initial_hostname'] ?? '') ?>" placeholder="server01.example.local">
+            <label class="ai-label" for="ai-eventid-search"><?= $h(_('Event / Problem (optional)')) ?></label>
+            <div class="ai-searchable-dropdown" id="ai-eventid-dropdown">
+                <input id="ai-eventid-search" class="ai-input" type="text" autocomplete="off" placeholder="<?= $h(_('Search problems…')) ?>">
+                <input id="ai-eventid" type="hidden" value="<?= $h($data['initial_eventid'] ?? '') ?>">
+                <div class="ai-dropdown-list ai-hidden" id="ai-eventid-list"></div>
+            </div>
 
             <label class="ai-label" for="ai-problem-summary"><?= $h(_('Problem summary (optional)')) ?></label>
             <textarea id="ai-problem-summary" class="ai-textarea" rows="4" placeholder="<?= $h(_('Short problem description or trigger text')) ?>"><?= $h($data['initial_problem_summary'] ?? '') ?></textarea>

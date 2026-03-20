@@ -151,6 +151,49 @@ html[theme="hc-dark"] .ai-page,
     margin-top: 6px;
 }
 
+/* ── Searchable dropdowns ── */
+.ai-searchable-dropdown {
+    position: relative;
+}
+
+.ai-dropdown-list {
+    position: absolute;
+    z-index: 100;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--ai-input-bg);
+    border: 1px solid var(--ai-input-border);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ai-dropdown-item {
+    padding: 7px 10px;
+    cursor: pointer;
+    color: var(--ai-fg);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    outline: none;
+}
+
+.ai-dropdown-item:hover,
+.ai-dropdown-item:focus {
+    background: var(--ai-bg-accent);
+}
+
+.ai-dropdown-empty {
+    padding: 8px 10px;
+    color: var(--ai-fg-muted);
+    font-style: italic;
+    font-size: 13px;
+}
+
 /* ── Chat transcript ── */
 .ai-transcript {
     min-height: 420px;

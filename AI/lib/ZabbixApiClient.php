@@ -114,6 +114,61 @@ class ZabbixApiClient {
         return 'Unknown';
     }
 
+    public function getHosts(): array {
+        $result = $this->call('host.get', [
+            'output' => ['hostid', 'host', 'name'],
+            'sortfield' => 'host',
+            'sortorder' => 'ASC'
+        ]);
+
+        $hosts = [];
+
+        foreach ($result as $row) {
+            $hosts[] = [
+                'hostid' => $row['hostid'],
+                'host' => $row['host'],
+                'name' => $row['name'] ?? $row['host']
+            ];
+        }
+
+        return $hosts;
+    }
+
+    public function getProblems(?string $hostid = null, string $search = '', int $limit = 50): array {
+        $params = [
+            'output' => ['eventid', 'name', 'severity'],
+            'source' => 0,
+            'object' => 0,
+            'sortfield' => ['eventid'],
+            'sortorder' => 'DESC',
+            'recent' => true,
+            'suppressed' => false,
+            'limit' => $limit
+        ];
+
+        if ($hostid !== null && $hostid !== '') {
+            $params['hostids'] = [$hostid];
+        }
+
+        if ($search !== '') {
+            $params['search'] = ['name' => $search];
+        }
+
+        $result = $this->call('problem.get', $params);
+
+        $problems = [];
+
+        foreach ($result as $row) {
+            $problems[] = [
+                'eventid' => $row['eventid'],
+                'name' => $row['name'] ?? '',
+                'severity' => $row['severity'] ?? '0'
+            ];
+        }
+
+        return $problems;
+    }
+
     public function addProblemComment(string $eventid, string $message, int $action = 4, int $chunk_size = 1900): array {
         $chunks = Util::chunkText($message, max(200, $chunk_size - 32));
         $count = count($chunks);
