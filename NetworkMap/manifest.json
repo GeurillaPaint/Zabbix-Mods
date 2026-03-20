@@ -4,7 +4,7 @@
   "name": "Network Map",
   "namespace": "NetworkMap",
   "version": "1.1.0",
-  "author": "Network Map",
+  "author": "Keberneth",
   "description": "Native Zabbix frontend module for the Network Map application (Zabbix-only host mapping).",
   "actions": {
     "networkmap.view": {
