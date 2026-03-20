@@ -1,0 +1,343 @@
+/* ── Theme variables (light defaults) ── */
+.ai-page {
+    --ai-bg: #fff;
+    --ai-bg-subtle: #fafbfd;
+    --ai-bg-accent: #f7f9fb;
+    --ai-fg: inherit;
+    --ai-fg-muted: #7f8c8d;
+    --ai-border: #dfe4ea;
+    --ai-border-light: #ecf0f1;
+    --ai-user-bg: #eef6ff;
+    --ai-assistant-bg: #f4f6f8;
+    --ai-warning-bg: #fff8dd;
+    --ai-warning-border: #f1c40f;
+    --ai-ok-bg: #ecf9f1;
+    --ai-ok-border: #c8ead4;
+    --ai-error-bg: #fff1f0;
+    --ai-error-border: #f2c2bf;
+    --ai-btn-bg: #fff;
+    --ai-btn-border: #b9c3cf;
+    --ai-input-bg: #fff;
+    --ai-input-border: #bbc4ce;
+}
+
+/* ── Dark theme overrides ── */
+.ai-page[data-ai-theme="dark"] {
+    --ai-bg: #2b3648;
+    --ai-bg-subtle: #1f2c3d;
+    --ai-bg-accent: #323f52;
+    --ai-fg: #dadee3;
+    --ai-fg-muted: #768d99;
+    --ai-border: #4a5568;
+    --ai-border-light: #3e4d5f;
+    --ai-user-bg: #1a3352;
+    --ai-assistant-bg: #2e3b4e;
+    --ai-warning-bg: #3d3520;
+    --ai-warning-border: #7a6a1e;
+    --ai-ok-bg: #1a3328;
+    --ai-ok-border: #2a5940;
+    --ai-error-bg: #3d1f1f;
+    --ai-error-border: #6b3030;
+    --ai-btn-bg: #323f52;
+    --ai-btn-border: #4a5568;
+    --ai-input-bg: #1f2c3d;
+    --ai-input-border: #4a5568;
+}
+
+/* ── Layout ── */
+#ai-chat-root,
+#ai-settings-root {
+    max-width: 1480px;
+}
+
+.ai-page {
+    display: block;
+    color: var(--ai-fg);
+}
+
+.ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.ai-header h1 {
+    margin: 0 0 6px;
+    color: var(--ai-fg);
+}
+
+.ai-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ai-muted {
+    color: var(--ai-fg-muted);
+    margin: 0;
+}
+
+.ai-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) 1fr;
+    gap: 20px;
+}
+
+/* ── Cards ── */
+.ai-card {
+    background: var(--ai-bg);
+    border: 1px solid var(--ai-border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.ai-card h2 {
+    margin-top: 0;
+    color: var(--ai-fg);
+}
+
+.ai-context-card,
+.ai-chat-card {
+    min-height: 400px;
+}
+
+/* ── Form elements ── */
+.ai-label {
+    display: block;
+    font-weight: 600;
+    margin: 12px 0 6px;
+    color: var(--ai-fg);
+}
+
+.ai-input,
+.ai-textarea,
+.ai-card select {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--ai-input-bg);
+    color: var(--ai-fg);
+    border: 1px solid var(--ai-input-border);
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+
+.ai-input::placeholder,
+.ai-textarea::placeholder {
+    color: var(--ai-fg-muted);
+}
+
+.ai-textarea {
+    resize: vertical;
+}
+
+.ai-checkbox {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-weight: 400;
+    color: var(--ai-fg);
+}
+
+.ai-inline-notes {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 6px;
+}
+
+/* ── Chat transcript ── */
+.ai-transcript {
+    min-height: 420px;
+    max-height: 70vh;
+    overflow-y: auto;
+    border: 1px solid var(--ai-border);
+    border-radius: 6px;
+    padding: 12px;
+    background: var(--ai-bg-subtle);
+}
+
+.ai-empty-state {
+    color: var(--ai-fg-muted);
+    font-style: italic;
+}
+
+.ai-msg {
+    border: 1px solid var(--ai-border);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    background: var(--ai-bg);
+}
+
+.ai-msg-title {
+    font-weight: 700;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ai-border-light);
+    background: var(--ai-bg-accent);
+    color: var(--ai-fg);
+}
+
+.ai-msg-user .ai-msg-title {
+    background: var(--ai-user-bg);
+}
+
+.ai-msg-assistant .ai-msg-title {
+    background: var(--ai-assistant-bg);
+}
+
+.ai-msg-body {
+    margin: 0;
+    padding: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    background: var(--ai-bg);
+    color: var(--ai-fg);
+}
+
+/* ── Compose / Actions ── */
+.ai-compose-form {
+    margin-top: 16px;
+}
+
+.ai-compose-actions,
+.ai-side-actions,
+.ai-form-actions,
+.ai-section-actions,
+.ai-repeat-row-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+/* ── Status messages ── */
+.ai-warning {
+    padding: 10px 12px;
+    border: 1px solid var(--ai-warning-border);
+    background: var(--ai-warning-bg);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    color: var(--ai-fg);
+}
+
+.ai-status {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+}
+
+.ai-status-ok {
+    background: var(--ai-ok-bg);
+    border: 1px solid var(--ai-ok-border);
+    color: var(--ai-fg);
+}
+
+.ai-status-error {
+    background: var(--ai-error-bg);
+    border: 1px solid var(--ai-error-border);
+    color: var(--ai-fg);
+}
+
+.ai-hidden {
+    display: none;
+}
+
+/* ── Repeatable rows (settings) ── */
+.ai-repeat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ai-repeat-row {
+    border: 1px solid var(--ai-border);
+    border-radius: 6px;
+    padding: 14px;
+    background: var(--ai-bg-subtle);
+}
+
+.ai-repeat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.ai-provider-grid {
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+}
+
+.ai-instruction-grid {
+    grid-template-columns: 1fr 220px;
+}
+
+.ai-link-grid {
+    grid-template-columns: 1fr 220px;
+}
+
+.ai-settings-grid {
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.ai-span-2 {
+    grid-column: span 2;
+}
+
+.ai-span-3 {
+    grid-column: span 3;
+}
+
+/* ── Buttons ── */
+.btn-alt {
+    display: inline-block;
+    padding: 6px 12px;
+    border: 1px solid var(--ai-btn-border);
+    border-radius: 4px;
+    background: var(--ai-btn-bg);
+    color: var(--ai-fg);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-alt:hover {
+    text-decoration: none;
+    background: var(--ai-bg-accent);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1200px) {
+    .ai-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-provider-grid,
+    .ai-repeat-grid,
+    .ai-settings-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+    }
+
+    .ai-span-3 {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 800px) {
+    .ai-provider-grid,
+    .ai-repeat-grid,
+    .ai-settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-span-2,
+    .ai-span-3 {
+        grid-column: span 1;
+    }
+
+    .ai-header {
+        flex-direction: column;
+    }
+}

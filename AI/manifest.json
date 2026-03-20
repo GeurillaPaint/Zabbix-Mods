@@ -1,0 +1,85 @@
+{
+  "manifest_version": 2.0,
+  "id": "custom_ai",
+  "name": "AI",
+  "namespace": "AI",
+  "version": "1.0.0",
+  "author": "OpenAI",
+  "description": "Ephemeral chat and webhook-driven AI troubleshooting assistant for Zabbix 7.",
+  "actions": {
+    "ai.chat": {
+      "class": "ChatView",
+      "view": "ai.chat"
+    },
+    "ai.settings": {
+      "class": "SettingsView",
+      "view": "ai.settings"
+    },
+    "ai.settings.save": {
+      "class": "SettingsSave"
+    },
+    "ai.chat.send": {
+      "class": "ChatSend"
+    },
+    "ai.event.comment": {
+      "class": "EventComment"
+    },
+    "ai.webhook": {
+      "class": "Webhook"
+    }
+  },
+  "assets": {
+    "css": [
+      "ai.css"
+    ],
+    "js": [
+      "ai.chat.js",
+      "ai.settings.js"
+    ]
+  },
+  "config": {
+    "providers": [],
+    "default_chat_provider_id": "",
+    "default_webhook_provider_id": "",
+    "instructions": [
+      {
+        "id": "default_firstline_policy",
+        "title": "Default first-line policy",
+        "enabled": true,
+        "content": "You are a first-line troubleshooting assistant.\n\nAbsolute rules (must never be broken):\n- Never restart a server, VM, network device, or database cluster.\n- Never reinstall software, services, applications, or operating systems.\n- Use only safe, reversible checks and first-line remediation steps.\n- Gather evidence and, if the quick fix fails, prepare a clean escalation package.\n- Include CMDB/NetBox data if it is relevant to the issue.\n\nAlways include:\n1. A quick, safe remediation attempt.\n2. A verification step with expected output.\n3. Evidence-gathering commands and log locations.\n4. Hints for deeper analysis.\n5. Exact artifacts to attach when escalating.\n\nReply in Markdown and put commands in fenced code blocks."
+      }
+    ],
+    "reference_links": [],
+    "zabbix_api": {
+      "url": "",
+      "token": "",
+      "token_env": "",
+      "verify_peer": true,
+      "timeout": 15,
+      "auth_mode": "auto"
+    },
+    "netbox": {
+      "enabled": false,
+      "url": "",
+      "token": "",
+      "token_env": "",
+      "verify_peer": true,
+      "timeout": 10
+    },
+    "webhook": {
+      "enabled": true,
+      "shared_secret": "",
+      "shared_secret_env": "",
+      "add_problem_update": true,
+      "problem_update_action": 4,
+      "comment_chunk_size": 1900,
+      "skip_resolved": true,
+      "include_netbox": true,
+      "include_os_hint": true
+    },
+    "chat": {
+      "max_history_messages": 12,
+      "temperature": 0.2
+    }
+  }
+}
