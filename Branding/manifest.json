@@ -1,0 +1,21 @@
+{
+ "manifest_version": 2.0,
+ "id": "rebrand",
+ "name": "Rebrand",
+ "namespace": "Rebrand",
+ "version": "1.0.3",
+ "type": "module",
+ "description": "Customize Zabbix branding by uploading custom logos for the login page, sidebar, and compact sidebar icon. Stores settings in local/conf and serves logos from module assets.",
+ "author": "Keberneth",
+ "url": "",
+ "actions": {
+  "rebrand.config": {
+   "class": "RebrandConfig",
+   "view": "rebrand.config",
+   "layout": "layout.htmlpage"
+  },
+  "rebrand.config.update": {
+   "class": "RebrandConfigUpdate"
+  }
+ }
+}
