@@ -1,0 +1,102 @@
+/* Veeam Backup Report – theme-agnostic (inherits from Zabbix) */
+.veeamreport { max-width: 100%; color: inherit; }
+.veeamreport-page-title { margin: 0 0 4px 0; font-size: 22px; font-weight: 600; color: inherit; }
+.veeamreport-section { margin-top: 18px; }
+.veeamreport-section-title { margin: 0 0 4px 0; font-size: 18px; font-weight: 600; color: inherit; }
+.veeamreport-section-subtitle { margin: 0 0 12px 0; font-size: 12px; opacity: 0.6; }
+.veeamreport-info-bar {
+    padding: 10px 14px;
+    margin: 10px 0 12px 0;
+    background: rgba(71, 150, 196, 0.12);
+    border: 1px solid rgba(71, 150, 196, 0.3);
+    border-radius: 6px;
+    color: rgb(71, 150, 196);
+}
+.veeamreport-info-label { font-weight: 600; }
+.veeamreport-sep { margin: 0 8px; opacity: 0.5; }
+.veeamreport-alert {
+    padding: 10px 14px;
+    margin: 10px 0 12px 0;
+    border-radius: 6px;
+    border: 1px solid transparent;
+}
+.veeamreport-alert--warning {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.4);
+    color: rgb(251, 191, 36);
+}
+.veeamreport-filter-form {
+    padding: 12px 14px;
+    margin: 14px 0 16px 0;
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    border-radius: 8px;
+}
+.veeamreport-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+.veeamreport-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: inherit;
+}
+.veeamreport-field input,
+.veeamreport-field select {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(128, 128, 128, 0.1);
+    color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+.veeamreport-field input:focus,
+.veeamreport-field select:focus {
+    outline: none;
+    border-color: rgb(71, 150, 196);
+    box-shadow: 0 0 0 2px rgba(71, 150, 196, 0.2);
+}
+.veeamreport-field--wide { grid-column: span 2; }
+.veeamreport-field-hint { margin-top: 4px; font-size: 11px; opacity: 0.55; }
+.veeamreport-form-actions { margin-top: 12px; }
+.veeamreport-multiselect { min-height: 11em; padding: 4px; }
+.veeamreport-downloads {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.veeamreport-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 12px 0 18px 0;
+}
+.veeamreport-card {
+    padding: 12px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    background: rgba(128, 128, 128, 0.06);
+    border-radius: 8px;
+}
+.veeamreport-card-label {
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.6;
+}
+.veeamreport-card-value {
+    font-size: 24px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: inherit;
+}
+.veeamreport-card-sub {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.65;
+}
+.veeamreport-empty-note { margin: 4px 0 10px 0; opacity: 0.55; }
+.veeamreport-wrap { white-space: normal; word-break: break-word; }

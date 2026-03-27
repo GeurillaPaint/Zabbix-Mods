@@ -1,0 +1,26 @@
+{
+    "manifest_version": 2.0,
+    "id": "veeam_backup_report",
+    "name": "Veeam Backup Report",
+    "description": "Monthly backup size report module for the Veeam Backup and Replication by HTTP v13 template.",
+    "version": "1.0.0",
+    "namespace": "VeeamBackupReport",
+    "author": "Keberneth",
+    "url": "",
+    "actions": {
+        "veeambackup.report.view": {
+            "class": "ReportView",
+            "layout": "layout.htmlpage",
+            "view": "veeambackup.report.view"
+        },
+        "veeambackup.report.download": {
+            "class": "ReportDownload",
+            "layout": null
+        }
+    },
+    "assets": {
+        "css": [
+            "veeamreport.css"
+        ]
+    }
+}
