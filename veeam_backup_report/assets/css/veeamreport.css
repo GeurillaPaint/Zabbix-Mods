@@ -53,6 +53,15 @@
     border-radius: 4px;
     padding: 6px 8px;
 }
+.veeamreport--dark .veeamreport-field select,
+.veeamreport--dark .veeamreport-field select option {
+    background: #1a1a1a;
+    color: #f2f2f2;
+}
+.veeamreport--dark .veeamreport-multiselect {
+    background: #1a1a1a;
+    color: #f2f2f2;
+}
 .veeamreport-field input:focus,
 .veeamreport-field select:focus {
     outline: none;

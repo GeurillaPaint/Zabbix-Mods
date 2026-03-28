@@ -34,6 +34,11 @@ $download_url = static function(string $format) use ($base_query): string {
 ob_start();
 ?>
 <div class="veeamreport">
+<script>
+(function(){var d=document.querySelector('link[href*="dark-theme"]');
+if(d){document.querySelector('.veeamreport').classList.add('veeamreport--dark');}
+})();
+</script>
     <div class="veeamreport-section">
         <h1 class="veeamreport-page-title"><?php echo $esc(_('Veeam Backup Report')); ?></h1>
         <p class="veeamreport-section-subtitle">
