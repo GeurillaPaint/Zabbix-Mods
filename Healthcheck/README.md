@@ -26,6 +26,8 @@ If the healtchecks return OK a ping can be sent. I recommend https://healthcheck
 healthchecks.io can be configured to sent triggered problems if ping is not recived within specified time period.
 <br>
 Can be integrated with multiple services for example: PagerDuty, Github, Teams, Slack and more
+<br>
+This will trgger a problem if there is any issue witch Zabbix or the internet connection from Zabbix.
 
 ## Installation
 
