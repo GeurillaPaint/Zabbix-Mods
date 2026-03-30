@@ -104,3 +104,14 @@ An example line is included in:
   - `module_healthcheck_run`
   - `module_healthcheck_run_step`
 - The runner prunes history older than the configured retention period on each execution.
+
+## Screenshots
+
+**Healthchecks**
+![Healthchecks example](./Example%20Pictures/Healtchecks.png)
+
+**Healthchecks settings**
+![Healthchecks settings example](./Example%20Pictures/Healtchecks_settings.png)
+
+**Healthchecks history**
+![Healthchecks history example](./Example%20Pictures/Healtchecks_history.png)
