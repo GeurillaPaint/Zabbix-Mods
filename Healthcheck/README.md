@@ -108,10 +108,10 @@ An example line is included in:
 ## Screenshots
 
 **Healthchecks**
-![Healthchecks example](./Example%20Pictures/Healtchecks.png)
+![Healthchecks example](../Example%20Pictures/Healtchecks.png)
 
 **Healthchecks settings**
-![Healthchecks settings example](./Example%20Pictures/Healtchecks_settings.png)
+![Healthchecks settings example](../Example%20Pictures/Healtchecks_settings.png)
 
 **Healthchecks history**
-![Healthchecks history example](./Example%20Pictures/Healtchecks_history.png)
+![Healthchecks history example](../Example%20Pictures/Healtchecks_history.png)
