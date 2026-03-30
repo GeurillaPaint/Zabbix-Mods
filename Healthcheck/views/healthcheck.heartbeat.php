@@ -45,8 +45,18 @@ if (function_exists('getUserTheme')) {
     }
 }
 
+$min_interval = 300;
+foreach ($checks as $ck) {
+    $ci = (int) ($ck['interval_seconds'] ?? 300);
+    if ($ci > 0 && $ci < $min_interval) {
+        $min_interval = $ci;
+    }
+}
+$auto_refresh_seconds = max(30, $min_interval);
+
 ob_start();
 ?>
+<meta http-equiv="refresh" content="<?= (int) $auto_refresh_seconds ?>">
 <div id="healthcheck-heartbeat-root" class="hc-page hc-heartbeat-page" data-healthcheck-theme="<?= $h($hc_theme) ?>" data-run-url="<?= $h($run_url) ?>" data-run-csrf-name="<?= $h(CCsrfTokenHelper::CSRF_TOKEN_NAME) ?>" data-run-csrf-token="<?= $h(CCsrfTokenHelper::get('healthcheck.run')) ?>">
     <div class="hc-header">
         <div>

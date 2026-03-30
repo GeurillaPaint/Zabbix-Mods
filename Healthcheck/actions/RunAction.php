@@ -29,7 +29,7 @@ class RunAction extends CController {
 
             $config = Config::get($pdo);
             $check_id = Util::cleanString($_REQUEST['checkid'] ?? '', 128);
-            $force = Util::truthy($_REQUEST['force'] ?? true);
+            $force = Util::truthy($_REQUEST['force'] ?? false);
 
             $result = Runner::runDueChecks($config, $pdo, $check_id, $force);
 
