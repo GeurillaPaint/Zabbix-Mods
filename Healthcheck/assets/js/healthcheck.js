@@ -54,6 +54,7 @@
         root.addEventListener('click', function (event) {
             var addButton = event.target.closest('[data-add-row]');
             var removeButton = event.target.closest('.hc-remove-row');
+            var copyButton = event.target.closest('.hc-copy-btn');
 
             if (addButton) {
                 event.preventDefault();
@@ -66,6 +67,22 @@
                 var row = removeButton.closest('.hc-repeat-row');
                 if (row) {
                     row.remove();
+                }
+                return;
+            }
+
+            if (copyButton) {
+                event.preventDefault();
+                var block = copyButton.closest('.hc-copy-block');
+                var target = block ? block.querySelector('.hc-copy-target') : null;
+
+                if (target) {
+                    var text = target.value || target.textContent;
+                    navigator.clipboard.writeText(text).then(function () {
+                        var original = copyButton.textContent;
+                        copyButton.textContent = 'Copied!';
+                        setTimeout(function () { copyButton.textContent = original; }, 1500);
+                    });
                 }
             }
         });
@@ -204,14 +221,101 @@
         });
     }
 
+    function initSchedulerCommands() {
+        var section = document.getElementById('healthcheck-scheduler-section');
+
+        if (!section) {
+            return;
+        }
+
+        var select = document.getElementById('hc-runner-user-select');
+        var cronEl = document.getElementById('hc-cron-commands');
+        var systemdEl = document.getElementById('hc-systemd-commands');
+        var testEl = document.getElementById('hc-test-command');
+
+        if (!select || !cronEl || !systemdEl || !testEl) {
+            return;
+        }
+
+        var runnerPath = section.getAttribute('data-runner-path');
+        var cronSchedule = section.getAttribute('data-cron-schedule');
+
+        function buildCommands(user) {
+            var cronLine = cronSchedule + ' /usr/bin/php ' + runnerPath + ' --json >/var/log/zabbix/healthcheck-runner.log 2>&1';
+
+            cronEl.value = [
+                '# Install or update the cron job for user "' + user + '"',
+                '# (safe to re-run \u2014 replaces any previous healthcheck-runner entry)',
+                'sudo crontab -u ' + user + ' -l 2>/dev/null | grep -v healthcheck-runner | { cat; echo \'' + cronLine + '\'; } | sudo crontab -u ' + user + ' -',
+                '',
+                '# Verify',
+                'sudo crontab -u ' + user + ' -l'
+            ].join('\n');
+
+            systemdEl.value = [
+                '# Create / update the service unit',
+                'cat << \'EOF\' | sudo tee /etc/systemd/system/healthcheck-runner.service > /dev/null',
+                '[Unit]',
+                'Description=Zabbix Healthcheck module runner',
+                'Wants=network-online.target',
+                'After=network-online.target',
+                '',
+                '[Service]',
+                'Type=oneshot',
+                'User=' + user,
+                'Group=' + user,
+                'ExecStart=/usr/bin/php ' + runnerPath + ' --json',
+                'NoNewPrivileges=true',
+                'PrivateTmp=true',
+                'ProtectHome=true',
+                'ProtectSystem=full',
+                'EOF',
+                '',
+                '# Create / update the timer unit',
+                'cat << \'EOF\' | sudo tee /etc/systemd/system/healthcheck-runner.timer > /dev/null',
+                '[Unit]',
+                'Description=Run the Zabbix Healthcheck module runner every minute',
+                '',
+                '[Timer]',
+                'OnBootSec=1min',
+                'OnUnitActiveSec=1min',
+                'Unit=healthcheck-runner.service',
+                'Persistent=true',
+                '',
+                '[Install]',
+                'WantedBy=timers.target',
+                'EOF',
+                '',
+                '# Reload, enable and (re)start the timer',
+                'sudo systemctl daemon-reload',
+                'sudo systemctl enable --now healthcheck-runner.timer',
+                'sudo systemctl restart healthcheck-runner.timer',
+                '',
+                '# Verify',
+                'systemctl list-timers healthcheck-runner.timer'
+            ].join('\n');
+
+            testEl.value = 'sudo -u ' + user + ' /usr/bin/php ' + runnerPath + ' --json';
+        }
+
+        select.addEventListener('change', function () {
+            buildCommands(select.value);
+        });
+
+        // Set initial values.
+        buildCommands(select.value);
+    }
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {
             initSettingsPage();
             initRunButtons();
+            initSchedulerCommands();
         });
     }
     else {
         initSettingsPage();
         initRunButtons();
+        initSchedulerCommands();
     }
 }());

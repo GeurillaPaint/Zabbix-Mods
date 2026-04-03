@@ -8,7 +8,6 @@ use CController,
     CControllerResponseData,
     Modules\Healthcheck\Lib\Config,
     Modules\Healthcheck\Lib\DbConnector,
-    Modules\Healthcheck\Lib\Runner,
     Modules\Healthcheck\Lib\Storage,
     Modules\Healthcheck\Lib\Util;
 
@@ -31,14 +30,6 @@ class HeartbeatView extends CController {
         Storage::ensureSchema($pdo);
 
         $config = Config::get($pdo);
-
-        if ($this->getUserType() == USER_TYPE_SUPER_ADMIN) {
-            try {
-                Runner::runDueChecks($config, $pdo, '', false);
-            }
-            catch (\Throwable $e) {
-            }
-        }
 
         $checks = Config::mergeWithDefaults($config)['checks'];
 

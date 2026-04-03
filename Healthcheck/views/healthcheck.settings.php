@@ -166,18 +166,145 @@ ob_start();
             </div>
         </section>
 
-        <section class="hc-card">
+        <?php
+        $runner_path    = $data['runner_script_path'] ?? '/usr/share/zabbix/modules/Healthcheck/bin/healthcheck-runner.php';
+        $cron_schedule  = $data['cron_schedule'] ?? '*/5 * * * *';
+        $default_user   = 'nginx';
+
+        // Build initial commands using the default user (JS updates these on dropdown change).
+        $cron_line = $cron_schedule.' /usr/bin/php '.$runner_path.' --json >/var/log/zabbix/healthcheck-runner.log 2>&1';
+
+        $cron_install = '# Install or update the cron job for user "'.$default_user.'"'."\n"
+            .'# (safe to re-run — replaces any previous healthcheck-runner entry)'."\n"
+            .'sudo crontab -u '.$default_user.' -l 2>/dev/null | grep -v healthcheck-runner | { cat; echo \''.$cron_line.'\'; } | sudo crontab -u '.$default_user.' -'."\n"
+            ."\n"
+            .'# Verify'."\n"
+            .'sudo crontab -u '.$default_user.' -l';
+
+        $systemd_commands = '# Create / update the service unit'."\n"
+            .'cat << \'EOF\' | sudo tee /etc/systemd/system/healthcheck-runner.service > /dev/null'."\n"
+            .'[Unit]'."\n"
+            .'Description=Zabbix Healthcheck module runner'."\n"
+            .'Wants=network-online.target'."\n"
+            .'After=network-online.target'."\n"
+            ."\n"
+            .'[Service]'."\n"
+            .'Type=oneshot'."\n"
+            .'User='.$default_user."\n"
+            .'Group='.$default_user."\n"
+            .'ExecStart=/usr/bin/php '.$runner_path.' --json'."\n"
+            .'NoNewPrivileges=true'."\n"
+            .'PrivateTmp=true'."\n"
+            .'ProtectHome=true'."\n"
+            .'ProtectSystem=full'."\n"
+            .'EOF'."\n"
+            ."\n"
+            .'# Create / update the timer unit'."\n"
+            .'cat << \'EOF\' | sudo tee /etc/systemd/system/healthcheck-runner.timer > /dev/null'."\n"
+            .'[Unit]'."\n"
+            .'Description=Run the Zabbix Healthcheck module runner every minute'."\n"
+            ."\n"
+            .'[Timer]'."\n"
+            .'OnBootSec=1min'."\n"
+            .'OnUnitActiveSec=1min'."\n"
+            .'Unit=healthcheck-runner.service'."\n"
+            .'Persistent=true'."\n"
+            ."\n"
+            .'[Install]'."\n"
+            .'WantedBy=timers.target'."\n"
+            .'EOF'."\n"
+            ."\n"
+            .'# Reload, enable and (re)start the timer'."\n"
+            .'sudo systemctl daemon-reload'."\n"
+            .'sudo systemctl enable --now healthcheck-runner.timer'."\n"
+            .'sudo systemctl restart healthcheck-runner.timer'."\n"
+            ."\n"
+            .'# Verify'."\n"
+            .'systemctl list-timers healthcheck-runner.timer';
+
+        $test_command = 'sudo -u '.$default_user.' /usr/bin/php '.$runner_path.' --json';
+        ?>
+        <section class="hc-card" id="healthcheck-scheduler-section"
+                 data-runner-path="<?= $h($runner_path) ?>"
+                 data-cron-schedule="<?= $h($cron_schedule) ?>">
             <h2><?= $h(_('Scheduler integration')) ?></h2>
             <p class="hc-muted">
-                The module includes a CLI runner that should be called every minute from a systemd timer or cron job. Each check still uses its own interval, so the runner skips checks that are not due yet.
+                The module runs health checks opportunistically on every Zabbix page load, but for truly unattended operation
+                (no one browsing the UI) you should also set up one of the schedulers below.
+                The runner is called every minute; it skips checks that are not due yet based on each check's interval.
             </p>
+
+            <div class="hc-repeat-grid" style="grid-template-columns: 1fr 1fr; max-width: 500px;">
+                <div>
+                    <label class="hc-label"><?= $h(_('Web server')) ?></label>
+                    <select class="hc-input" id="hc-runner-user-select">
+                        <option value="nginx" selected>nginx</option>
+                        <option value="apache">apache</option>
+                        <option value="www-data">www-data</option>
+                        <option value="zabbix">zabbix</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="hc-label"><?= $h(_('Cron schedule')) ?></label>
+                    <input class="hc-input" type="text" readonly value="<?= $h($cron_schedule) ?>">
+                </div>
+            </div>
+
             <label class="hc-label"><?= $h(_('Runner path')) ?></label>
-            <input class="hc-input" type="text" readonly value="<?= $h($data['runner_script_path'] ?? '') ?>">
-            <label class="hc-label"><?= $h(_('Recommended command')) ?></label>
-            <textarea class="hc-textarea" rows="3" readonly>/usr/bin/php <?= $h($data['runner_script_path'] ?? '/usr/share/zabbix/modules/Healthcheck/bin/healthcheck-runner.php') ?> --json</textarea>
+            <div class="hc-copy-block">
+                <input class="hc-input hc-copy-target" type="text" readonly value="<?= $h($runner_path) ?>">
+                <button type="button" class="btn-alt hc-copy-btn" title="<?= $h(_('Copy to clipboard')) ?>"><?= $h(_('Copy')) ?></button>
+            </div>
+
+            <h3 class="hc-label" style="margin-top:20px;font-size:1em;"><?= $h(_('Option A — Cron')) ?></h3>
             <p class="hc-muted">
-                Example systemd unit and timer files are included in the module under <code>examples/systemd/</code>.
+                Copy-paste the block below to create or update the cron job.
+                Re-running is safe &mdash; it replaces any previous healthcheck-runner entry.
             </p>
+            <div class="hc-copy-block">
+                <textarea class="hc-textarea hc-copy-target" id="hc-cron-commands" rows="5" readonly><?= $h($cron_install) ?></textarea>
+                <button type="button" class="btn-alt hc-copy-btn" title="<?= $h(_('Copy to clipboard')) ?>"><?= $h(_('Copy')) ?></button>
+            </div>
+
+            <h3 class="hc-label" style="margin-top:20px;font-size:1em;"><?= $h(_('Option B — systemd timer (recommended)')) ?></h3>
+            <p class="hc-muted">
+                Copy-paste the block below to create or update the systemd units.
+                The timer runs every minute and survives reboots.
+                Safe to re-run after changing settings &mdash; overwrites the unit files and restarts the timer.
+            </p>
+            <div class="hc-copy-block">
+                <textarea class="hc-textarea hc-copy-target" id="hc-systemd-commands" rows="25" readonly><?= $h($systemd_commands) ?></textarea>
+                <button type="button" class="btn-alt hc-copy-btn" title="<?= $h(_('Copy to clipboard')) ?>"><?= $h(_('Copy')) ?></button>
+            </div>
+            <div class="hc-muted" style="margin-top:12px; padding:10px 14px; border:1px solid var(--hc-input-border); border-radius:4px;">
+                <strong>Troubleshooting: Permission denied with nginx</strong>
+                <p style="margin:6px 0 4px;">
+                    If the runner fails with:
+                </p>
+                <code style="display:block; font-size:0.85em; margin:4px 0 10px; word-break:break-all;">
+                    PHP Warning: require(/etc/zabbix/web/zabbix.conf.php): Failed to open stream: Permission denied
+                </code>
+                <p style="margin:6px 0 4px;">
+                    This happens because <code>zabbix.conf.php</code> is typically owned by <code>apache</code> and not
+                    readable by the <code>nginx</code> user.
+                </p>
+                <p style="margin:6px 0 2px;"><strong>Fix 1 (simplest):</strong> Select <code>apache</code> in the Web server dropdown above and re-copy the commands.</p>
+                <p style="margin:6px 0 2px;"><strong>Fix 2 (keeps nginx):</strong> Add <code>nginx</code> to the <code>apache</code> group so it can read the config file:</p>
+                <div class="hc-copy-block" style="margin-top:6px;">
+                    <textarea class="hc-textarea hc-copy-target" rows="2" readonly style="font-size:0.9em;">sudo usermod -aG apache nginx
+sudo chmod 640 /etc/zabbix/web/zabbix.conf.php</textarea>
+                    <button type="button" class="btn-alt hc-copy-btn" title="<?= $h(_('Copy to clipboard')) ?>"><?= $h(_('Copy')) ?></button>
+                </div>
+            </div>
+
+            <h3 class="hc-label" style="margin-top:20px;font-size:1em;"><?= $h(_('Manual test')) ?></h3>
+            <p class="hc-muted">
+                Run a one-off check to verify the runner works.
+            </p>
+            <div class="hc-copy-block">
+                <textarea class="hc-textarea hc-copy-target" id="hc-test-command" rows="1" readonly><?= $h($test_command) ?></textarea>
+                <button type="button" class="btn-alt hc-copy-btn" title="<?= $h(_('Copy to clipboard')) ?>"><?= $h(_('Copy')) ?></button>
+            </div>
         </section>
 
         <div class="hc-form-actions">

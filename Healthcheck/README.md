@@ -41,16 +41,27 @@ This will trgger a problem if there is any issue witch Zabbix or the internet co
 
 2. Set permissions.
 
-       chown -R nginx:nginx /usr/share/zabbix/ui/modules/Healthcheck
-       find /usr/share/zabbix/ui/modules/Healthcheck -type d -exec chmod 0755 {} \;
-       find /usr/share/zabbix/ui/modules/Healthcheck -type f -exec chmod 0644 {} \;
-       chmod 0755 /usr/share/zabbix/ui/modules/Healthcheck/bin/healthcheck-runner.php
+# Set ownership
+sudo chown -R nginx:nginx /usr/share/zabbix/modules/Healthcheck
+sudo find /usr/share/zabbix/modules/Healthcheck -type d -exec chmod 755 {} \;
+sudo find /usr/share/zabbix/modules/Healthcheck -type f -exec chmod 644 {} \;
+
+# Make runtime/ writable for lock and throttle files
+sudo chmod 775 /usr/share/zabbix/modules/Healthcheck/runtime
 
 3. If SELinux is enabled, label the directory and allow outbound connections.
 
-       semanage fcontext -a -t httpd_sys_content_t '/usr/share/zabbix/ui/modules/Healthcheck(/.*)?'
-       restorecon -Rv /usr/share/zabbix/ui/modules/Healthcheck
-       setsebool -P httpd_can_network_connect on
+# SELinux: label module files for the web server
+sudo semanage fcontext -a -t httpd_sys_content_t '/usr/share/zabbix/modules/Healthcheck(/.*)?'
+sudo semanage fcontext -a -t httpd_sys_rw_content_t '/usr/share/zabbix/modules/Healthcheck/runtime(/.*)?'
+sudo restorecon -Rv /usr/share/zabbix/modules/Healthcheck
+
+# SELinux: allow the web server to make outbound connections (API + ping)
+sudo setsebool -P httpd_can_network_connect on
+
+# SELinux: allow the web server to connect to the database over TCP
+# (skip if Zabbix uses a local Unix socket)
+sudo setsebool -P httpd_can_network_connect_db on
 
 4. In the Zabbix frontend, open the module administration page.
 
