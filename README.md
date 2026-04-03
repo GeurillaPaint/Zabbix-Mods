@@ -5,6 +5,8 @@ Modules for Zabbix to extend the capabilities
 Download the module folder to the Zabbix Web frontend Server and place in:
 /usr/share/zabbix/modules/
 
+### Branding and Healthcheck have seprate installation instruction in it's own readme
+
 ## Set permissions
 ### Folders and Files Permissions
 sudo chown -R nginx:nginx /usr/share/zabbix/modules/MODULE_FOLDER_NAME<br>
