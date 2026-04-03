@@ -26,10 +26,8 @@ A self-contained Zabbix frontend module that adds:
 - **AI-powered Zabbix actions**: ask questions or give commands in natural language
 
 ### Chat and AI Security - settings
-- Replaces sensitive values (hostnames, IPs, domains, URLs, OS names) with safe aliases before sending data to the AI provider. When the AI responds, aliases are restored locally so you see the real values.
-<br>
+- <b>Replaces sensitive values (hostnames, IPs, domains, URLs, OS names) with safe aliases before sending data to the AI provider. When the AI responds, aliases are restored locally so you see the real values.</b>
 - Example: prd-web-001 becomes ai-host-001 outbound. The AI works with the alias. When the reply comes back, ai-host-001 is replaced with prd-web-001 before you see it.
-<br>
 - More information and setup if found in Security / redaction settings in the module
 
 ### AI-powered Zabbix actions
