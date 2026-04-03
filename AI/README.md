@@ -25,6 +25,13 @@ A self-contained Zabbix frontend module that adds:
 - Button to post the **last AI answer** back to a Zabbix event as problem update comments
 - **AI-powered Zabbix actions**: ask questions or give commands in natural language
 
+### Chat and AI Security - settings
+- Replaces sensitive values (hostnames, IPs, domains, URLs, OS names) with safe aliases before sending data to the AI provider. When the AI responds, aliases are restored locally so you see the real values.
+<br>
+- Example: prd-web-001 becomes ai-host-001 outbound. The AI works with the alias. When the reply comes back, ai-host-001 is replaced with prd-web-001 before you see it.
+<br>
+- More information and setup if found in Security / redaction settings in the module
+
 ### AI-powered Zabbix actions
 
 When enabled, you can type natural language commands in the chat and the AI will interact with Zabbix on your behalf. Examples:
@@ -236,7 +243,7 @@ The module accepts either:
 - Local logs are stored as JSONL files under the configured log path (default `/tmp/zabbix-ai-module/logs`) with optional archive path (default `/tmp/zabbix-ai-module/archive`)
 - **Logging is disabled by default.** Enable it in Settings > Logging after setting up writable directories.
 - **Writable directories must exist and be accessible by the web server process.** On systems with `PrivateTmp=yes` (common on RHEL/systemd), the default `/tmp` paths may not work. See `INSTALL.md` section 6 for setup instructions.
-- AI-powered Zabbix actions depend on the AI model correctly interpreting your request and generating valid tool calls. More capable models (GPT-4, Claude Sonnet/Opus) produce better results than smaller models.
+- AI-powered Zabbix actions depend on the AI model correctly interpreting your request and generating valid tool calls. More capable models (GPT-5, Claude Sonnet/Opus) produce better results than smaller models.
 
 ## Files of interest
 
