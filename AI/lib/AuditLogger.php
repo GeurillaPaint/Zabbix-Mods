@@ -95,8 +95,10 @@ class AuditLogger {
         $limit = max(1, min($limit, 1000));
         self::runMaintenance($config);
 
+        // listLogFiles() already returns files sorted newest-first by name,
+        // and readFileLines() returns each file's lines newest-first, so the
+        // combined stream is newest → oldest with no extra reverse needed.
         $files = self::listLogFiles($config);
-        $files = array_reverse($files);
         $entries = [];
 
         foreach ($files as $file) {

@@ -91,6 +91,10 @@ class ChatExecute extends CController {
                 ? Redactor::forChatSession($config, $this->serverSessionKey(), $chat_session_id)
                 : null;
 
+            if ($redactor !== null) {
+                $redactor->loadZabbixHostInventory($zabbix_api);
+            }
+
             $tool_result = ZabbixActionExecutor::execute($tool_name, $tool_params, $zabbix_api);
             $tool_result_masked = $redactor !== null
                 ? $redactor->redactText($tool_result, 'action_formatting')
@@ -102,13 +106,15 @@ class ChatExecute extends CController {
             }
 
             if ($provider !== null) {
+                // Sensitive instruction segments are pre-redacted here so the
+                // non-sensitive policy text reaches the model intact.
                 $system_prompt = PromptBuilder::buildSystemPrompt($config, [
                     'mode' => 'interactive chat',
                     'response_style' => 'Reply in Markdown. Be concise but operationally useful.'
-                ]);
+                ], $redactor, 'action_formatting');
 
                 $messages = [
-                    ['role' => 'system', 'content' => $redactor !== null ? $redactor->redactText($system_prompt, 'action_formatting') : $system_prompt],
+                    ['role' => 'system', 'content' => $system_prompt],
                     ['role' => 'user', 'content' => "The following Zabbix action was executed successfully.\n\nTool: "
                         .$tool_name
                         ."\nResult:\n"

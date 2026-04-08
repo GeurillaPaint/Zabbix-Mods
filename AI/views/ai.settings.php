@@ -113,6 +113,10 @@ $render_instruction_row = static function(array $instruction = []) use ($h): str
                 <label class="ai-label"><?= $h(_('Enabled')) ?></label>
                 <label class="ai-checkbox"><input type="checkbox" name="instructions[<?= $h($id) ?>][enabled]" value="1" <?= !empty($instruction['enabled']) ? 'checked' : '' ?>> <?= $h(_('Use this block')) ?></label>
             </div>
+            <div>
+                <label class="ai-label" title="<?= $h(_('When enabled, this instruction block is run through the security redactor before being sent to the model. Leave off for normal admin-authored policy text so words like \'first-line\' or example hostnames are not aliased.')) ?>"><?= $h(_('Sensitive')) ?></label>
+                <label class="ai-checkbox"><input type="checkbox" name="instructions[<?= $h($id) ?>][sensitive]" value="1" <?= !empty($instruction['sensitive']) ? 'checked' : '' ?>> <?= $h(_('Apply redaction to this block')) ?></label>
+            </div>
             <div class="ai-span-3">
                 <label class="ai-label"><?= $h(_('Instruction text')) ?></label>
                 <textarea class="ai-textarea" rows="8" name="instructions[<?= $h($id) ?>][content]"><?= $h($instruction['content'] ?? '') ?></textarea>
@@ -549,7 +553,8 @@ restorecon -Rv /var/lib/zabbix-ai</pre>
 
             <h3><?= $h(_('Replace these categories before send')) ?></h3>
             <div class="ai-check-grid">
-                <label class="ai-checkbox"><input type="checkbox" name="security[categories][hostnames]" value="1" <?= !empty($config['security']['categories']['hostnames']) ? 'checked' : '' ?>> <?= $h(_('Hostnames')) ?></label>
+                <label class="ai-checkbox" title="<?= $h(_('Fetch the host list from Zabbix and replace every real hostname (and identifier-like substrings of one, e.g. db-01 inside prd-db-01) with a stable ai-host-NNN alias. Generic words like \'db\' that are not Zabbix hosts are left alone.')) ?>"><input type="checkbox" name="security[categories][zabbix_inventory]" value="1" <?= !empty($config['security']['categories']['zabbix_inventory']) ? 'checked' : '' ?>> <?= $h(_('Zabbix host inventory (recommended)')) ?></label>
+                <label class="ai-checkbox" title="<?= $h(_('Legacy heuristic that tries to guess hostnames by regex. Off by default because it produces false positives like \'first-line\' or \'Evidence-gathering\'. Enable only if you cannot use the inventory-based mode.')) ?>"><input type="checkbox" name="security[categories][hostnames]" value="1" <?= !empty($config['security']['categories']['hostnames']) ? 'checked' : '' ?>> <?= $h(_('Hostnames (heuristic, legacy)')) ?></label>
                 <label class="ai-checkbox"><input type="checkbox" name="security[categories][ipv4]" value="1" <?= !empty($config['security']['categories']['ipv4']) ? 'checked' : '' ?>> <?= $h(_('IPv4')) ?></label>
                 <label class="ai-checkbox"><input type="checkbox" name="security[categories][ipv6]" value="1" <?= !empty($config['security']['categories']['ipv6']) ? 'checked' : '' ?>> <?= $h(_('IPv6')) ?></label>
                 <label class="ai-checkbox"><input type="checkbox" name="security[categories][fqdns]" value="1" <?= !empty($config['security']['categories']['fqdns']) ? 'checked' : '' ?>> <?= $h(_('FQDNs / domains')) ?></label>
@@ -557,6 +562,10 @@ restorecon -Rv /var/lib/zabbix-ai</pre>
                 <label class="ai-checkbox"><input type="checkbox" name="security[categories][strip_url_query]" value="1" <?= !empty($config['security']['categories']['strip_url_query']) ? 'checked' : '' ?>> <?= $h(_('Strip URL query strings')) ?></label>
             </div>
             <div class="ai-repeat-grid ai-settings-grid">
+                <div>
+                    <label class="ai-label"><?= $h(_('Inventory cache TTL (seconds)')) ?></label>
+                    <input class="ai-input" type="number" min="30" max="86400" name="security[categories][inventory_ttl_seconds]" value="<?= $h((int) ($config['security']['categories']['inventory_ttl_seconds'] ?? 300)) ?>">
+                </div>
                 <div>
                     <label class="ai-label"><?= $h(_('OS handling')) ?></label>
                     <select class="ai-input" name="security[categories][os_mode]">

@@ -60,6 +60,10 @@ class ChatSend extends CController {
             $redactor = $this->buildRedactor($config, $chat_session_id);
             $zabbix_api = ZabbixApiClient::fromConfig($config);
 
+            if ($redactor !== null) {
+                $redactor->loadZabbixHostInventory($zabbix_api);
+            }
+
             if ($context['hostname'] !== '' && $zabbix_api !== null) {
                 $context['os_type'] = $zabbix_api->getOsTypeByHostname($context['hostname']);
             }
@@ -72,11 +76,16 @@ class ChatSend extends CController {
             $system_prompt = PromptBuilder::buildSystemPrompt($config, [
                 'mode' => 'interactive chat',
                 'response_style' => 'Reply in Markdown. Be concise but operationally useful.'
-            ]);
+            ], $redactor, 'chat');
 
             $context_block = PromptBuilder::buildChatContextBlock($context);
             if ($context_block !== '') {
-                $system_prompt .= "\n\nCurrent chat context:\n".$context_block;
+                // Chat context is built from untrusted runtime data (hostname,
+                // problem summary, etc.), so it must always be redacted.
+                $context_block_safe = $redactor !== null
+                    ? $redactor->redactText($context_block, 'chat')
+                    : $context_block;
+                $system_prompt .= "\n\nCurrent chat context:\n".$context_block_safe;
             }
 
             $actions_config = $config['zabbix_actions'] ?? [];
@@ -109,7 +118,12 @@ class ChatSend extends CController {
                 $actions_provider = Config::getProvider($config, '', 'actions');
             }
             $active_provider = $actions_provider ?? $provider;
-            $outbound_messages = $redactor !== null ? $redactor->redactMessages($messages, 'chat') : $messages;
+            // The system prompt has already been processed by PromptBuilder
+            // (sensitive instruction segments + chat context block). Only
+            // redact history and the current user turn here.
+            $outbound_messages = $redactor !== null
+                ? $redactor->redactNonSystemMessages($messages, 'chat')
+                : $messages;
 
             $reply_masked = ProviderClient::chat(
                 $active_provider,

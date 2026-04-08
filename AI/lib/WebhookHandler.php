@@ -57,18 +57,20 @@ class WebhookHandler {
             $context['netbox_info'] = $netbox->getContextForHostname($payload['hostname']);
         }
 
+        $redactor = Redactor::forEphemeral($config);
+        $redactor->loadZabbixHostInventory($zabbix_api);
+
         $system_prompt = PromptBuilder::buildSystemPrompt($config, [
             'mode' => 'webhook automation',
             'response_style' => 'Focus on safe first-line troubleshooting guidance and keep the answer operational.'
-        ]);
+        ], $redactor, 'webhook');
         $user_prompt = PromptBuilder::buildWebhookUserPrompt($payload, $context);
 
-        $redactor = Redactor::forEphemeral($config);
         $messages = [
             ['role' => 'system', 'content' => $system_prompt],
             ['role' => 'user', 'content' => $user_prompt]
         ];
-        $masked_messages = $redactor->redactMessages($messages, 'webhook');
+        $masked_messages = $redactor->redactNonSystemMessages($messages, 'webhook');
         $reply_masked = ProviderClient::chat(
             $provider,
             $masked_messages,

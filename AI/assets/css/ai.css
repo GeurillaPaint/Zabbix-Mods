@@ -124,6 +124,16 @@ html[theme="hc-dark"] .ai-page,
     border: 1px solid var(--ai-input-border);
     border-radius: 4px;
     padding: 6px 8px;
+    font: inherit;
+    line-height: 1.4;
+}
+
+.ai-card select,
+select.ai-input {
+    min-height: 32px;
+    padding: 6px 28px 6px 10px;
+    line-height: 1.4;
+    appearance: auto;
 }
 
 .ai-input::placeholder,

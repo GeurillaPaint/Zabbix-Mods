@@ -21,6 +21,7 @@ class Config {
                 'id' => 'default_firstline_policy',
                 'title' => 'Default first-line policy',
                 'enabled' => true,
+                'sensitive' => false,
                 'content' => "You are a first-line troubleshooting assistant.\n\n"
                     ."Absolute rules (must never be broken):\n"
                     ."- Never restart a server, VM, network device, or database cluster.\n"
@@ -81,7 +82,9 @@ class Config {
                     'action_formatting' => true
                 ],
                 'categories' => [
-                    'hostnames' => true,
+                    'zabbix_inventory' => true,
+                    'inventory_ttl_seconds' => 300,
+                    'hostnames' => false,
                     'ipv4' => true,
                     'ipv6' => true,
                     'fqdns' => true,
@@ -294,6 +297,7 @@ class Config {
                 'id' => $id,
                 'title' => Util::cleanString($instruction['title'] ?? ($existing['title'] ?? ''), 128),
                 'enabled' => Util::truthy($instruction['enabled'] ?? false),
+                'sensitive' => Util::truthy($instruction['sensitive'] ?? false),
                 'content' => $content
             ];
         }
@@ -386,6 +390,8 @@ class Config {
                 'action_formatting' => Util::truthy($security['apply_to']['action_formatting'] ?? false)
             ],
             'categories' => [
+                'zabbix_inventory' => Util::truthy($security['categories']['zabbix_inventory'] ?? false),
+                'inventory_ttl_seconds' => Util::cleanInt($security['categories']['inventory_ttl_seconds'] ?? 300, 300, 30, 86400),
                 'hostnames' => Util::truthy($security['categories']['hostnames'] ?? false),
                 'ipv4' => Util::truthy($security['categories']['ipv4'] ?? false),
                 'ipv6' => Util::truthy($security['categories']['ipv6'] ?? false),

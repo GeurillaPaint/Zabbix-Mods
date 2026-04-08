@@ -4,10 +4,20 @@ namespace Modules\AI\Lib;
 
 class PromptBuilder {
 
-    public static function buildSystemPrompt(array $config, array $context = []): string {
+    /**
+     * Build the system prompt.
+     *
+     * If a $redactor is supplied, instruction blocks marked `sensitive=true`
+     * are passed through the redactor on the given $channel; non-sensitive
+     * instructions and admin-authored reference links are kept verbatim.
+     * The caller MUST NOT pass the resulting system message back through
+     * Redactor::redactMessages — it has already been processed.
+     */
+    public static function buildSystemPrompt(array $config, array $context = [], ?Redactor $redactor = null, string $channel = 'chat'): string {
         $config = Config::mergeWithDefaults($config);
 
         $blocks = [];
+        $had_instruction = false;
 
         foreach ($config['instructions'] as $instruction) {
             if (!is_array($instruction) || !Util::truthy($instruction['enabled'] ?? false)) {
@@ -16,12 +26,20 @@ class PromptBuilder {
 
             $content = Util::cleanMultiline($instruction['content'] ?? '', 50000);
 
-            if ($content !== '') {
-                $blocks[] = $content;
+            if ($content === '') {
+                continue;
             }
+
+            $had_instruction = true;
+
+            if ($redactor !== null && Util::truthy($instruction['sensitive'] ?? false)) {
+                $content = $redactor->redactText($content, $channel);
+            }
+
+            $blocks[] = $content;
         }
 
-        if ($blocks === []) {
+        if (!$had_instruction) {
             $blocks[] = Config::defaults()['instructions'][0]['content'];
         }
 

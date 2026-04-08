@@ -16,6 +16,14 @@ class Redactor {
     private bool $persistent;
     private string $server_session_id;
     private string $client_session_id;
+
+    /** [lowercase_canonical_hostname => alias] — Zabbix host inventory aliases. */
+    private array $zbx_inventory_aliases = [];
+    /** [lowercase_phrase => lowercase_canonical_hostname] — full hosts + identifier substrings. */
+    private array $zbx_inventory_phrases = [];
+    /** [lowercase_canonical => original_case_hostname] — preserves case for restoration. */
+    private array $zbx_inventory_canonical = [];
+
     private array $stats = [
         'hostnames' => 0,
         'ipv4' => 0,
@@ -97,6 +105,30 @@ class Redactor {
         return $result;
     }
 
+    /**
+     * Redact every message except role=system. The system prompt is treated
+     * as admin-authored content; sensitive segments inside it must be
+     * pre-redacted by PromptBuilder before this method is called.
+     */
+    public function redactNonSystemMessages(array $messages, string $channel = 'chat'): array {
+        if (!$this->shouldApply($channel)) {
+            return $messages;
+        }
+
+        $result = [];
+        foreach ($messages as $message) {
+            if (!is_array($message)) {
+                continue;
+            }
+            if (($message['role'] ?? '') !== 'system') {
+                $message['content'] = $this->redactText((string) ($message['content'] ?? ''), $channel);
+            }
+            $result[] = $message;
+        }
+
+        return $result;
+    }
+
     public function redactText(string $text, string $channel = 'chat'): string {
         if (!$this->shouldApply($channel) || trim($text) === '') {
             return $text;
@@ -106,6 +138,7 @@ class Redactor {
         $text = $this->applyExistingForwardMappings($text);
 
         $text = $this->applyCustomRules($text);
+        $text = $this->applyZabbixInventoryRedaction($text);
         $text = $this->applyOsRedaction($text);
         $text = $this->applyUrlRedaction($text);
         $text = $this->applyIpV4Redaction($text);
@@ -116,6 +149,297 @@ class Redactor {
         $this->assertNoKnownLeaks($text);
 
         return $text;
+    }
+
+    /**
+     * Load the Zabbix host inventory and pre-allocate stable aliases for every
+     * known hostname plus identifier-like substrings (e.g. "db-01" inside
+     * "prd-db-01"). The actual replacement happens in
+     * applyZabbixInventoryRedaction(), which uses word-boundary regex so that
+     * generic words like "db" or partial fragments inside unrelated tokens
+     * are never touched.
+     *
+     * Aliases are persisted in a separate inventory cache file so that the
+     * mapping prd-db-01 → ai-host-001 stays stable across sessions and users.
+     *
+     * Safe to call repeatedly; the cache TTL is enforced internally.
+     */
+    public function loadZabbixHostInventory(?ZabbixApiClient $api): void {
+        if ($api === null || !$this->isEnabled()) {
+            return;
+        }
+
+        if (!Util::truthy($this->config['security']['categories']['zabbix_inventory'] ?? true)) {
+            return;
+        }
+
+        $ttl = (int) ($this->config['security']['categories']['inventory_ttl_seconds'] ?? 300);
+        $ttl = max(30, min(86400, $ttl));
+
+        $cache = $this->fetchInventoryCache($api, $ttl);
+
+        $this->zbx_inventory_aliases = [];
+        $this->zbx_inventory_phrases = [];
+        $this->zbx_inventory_canonical = [];
+
+        $highest_alias_index = 0;
+
+        foreach (($cache['hosts'] ?? []) as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            $canonical = trim((string) ($entry['canonical'] ?? ''));
+            $alias = trim((string) ($entry['alias'] ?? ''));
+
+            if ($canonical === '' || $alias === '') {
+                continue;
+            }
+
+            $canonical_lower = strtolower($canonical);
+            $this->zbx_inventory_aliases[$canonical_lower] = $alias;
+            $this->zbx_inventory_canonical[$canonical_lower] = $canonical;
+            $this->zbx_inventory_phrases[$canonical_lower] = $canonical_lower;
+
+            if (preg_match('/(\d+)$/', $alias, $m)) {
+                $highest_alias_index = max($highest_alias_index, (int) $m[1]);
+            }
+
+            foreach ($this->deriveHostnameSubtokens($canonical) as $sub) {
+                $sub_lower = strtolower($sub);
+                if (!isset($this->zbx_inventory_phrases[$sub_lower])) {
+                    $this->zbx_inventory_phrases[$sub_lower] = $canonical_lower;
+                }
+            }
+
+            // Visible name (if it differs and is identifier-like) gets the same alias.
+            $visible = trim((string) ($entry['visible'] ?? ''));
+            if ($visible !== '' && $visible !== $canonical && strpos($visible, ' ') === false) {
+                $vlower = strtolower($visible);
+                if (!isset($this->zbx_inventory_phrases[$vlower])) {
+                    $this->zbx_inventory_phrases[$vlower] = $canonical_lower;
+                }
+            }
+        }
+
+        // Make sure the per-session "hostname" counter (used by the legacy
+        // heuristic if it is also enabled) cannot allocate an ai-host-NNN
+        // alias that collides with one already reserved by the inventory.
+        $current_counter = (int) ($this->state['counters']['hostname'] ?? 0);
+        if ($highest_alias_index > $current_counter) {
+            $this->state['counters']['hostname'] = $highest_alias_index;
+        }
+    }
+
+    /**
+     * Word-boundary scan that replaces every appearance of a known Zabbix
+     * hostname (or identifier-like substring of one) with that hostname's
+     * stable alias.
+     */
+    private function applyZabbixInventoryRedaction(string $text): string {
+        if (empty($this->zbx_inventory_phrases)) {
+            return $text;
+        }
+
+        $phrases = array_keys($this->zbx_inventory_phrases);
+        $phrases = Util::sortByLengthDesc($phrases);
+
+        $escaped = array_map(static function(string $p): string {
+            return preg_quote($p, '~');
+        }, $phrases);
+
+        // (?<![A-Za-z0-9_.-]) and (?![A-Za-z0-9_.-]) treat dot/underscore/hyphen
+        // as part of the surrounding token, so "myprd-db-01x" is NOT matched
+        // when only "db-01" is in the inventory.
+        $pattern = '~(?<![A-Za-z0-9_.\-])(?:'.implode('|', $escaped).')(?![A-Za-z0-9_.\-])~iu';
+
+        return preg_replace_callback($pattern, function(array $m): string {
+            $matched = $m[0];
+
+            if ($this->isAliasValue($matched)) {
+                return $matched;
+            }
+
+            $matched_lower = strtolower($matched);
+            $canonical_lower = $this->zbx_inventory_phrases[$matched_lower] ?? null;
+            if ($canonical_lower === null) {
+                return $matched;
+            }
+
+            $alias = $this->zbx_inventory_aliases[$canonical_lower] ?? null;
+            if ($alias === null) {
+                return $matched;
+            }
+
+            $canonical = $this->zbx_inventory_canonical[$canonical_lower] ?? $canonical_lower;
+
+            // Register restore mapping for the canonical (idempotent).
+            if (!isset($this->state['reverse'][$alias])) {
+                $this->state['reverse'][$alias] = $canonical;
+            }
+            // Persist only the full canonical spelling — substrings would
+            // bloat the per-session state file across requests and they are
+            // already rebuilt from the inventory cache on every load.
+            if ($matched_lower === $canonical_lower && !isset($this->state['forward'][$canonical])) {
+                $this->state['forward'][$canonical] = $alias;
+                $this->state['meta'][$canonical] = ['type' => 'hostname', 'alias' => $alias];
+            }
+
+            $this->bumpStat('hostnames');
+            return $alias;
+        }, $text);
+    }
+
+    /**
+     * Identifier-like substrings of a hostname that should also alias to the
+     * same value. Rules: contiguous segment range from the hyphen split,
+     * length >= 4, contains a digit, and either contains a hyphen or has at
+     * least one letter (so "01" alone is rejected but "KT4B" is allowed).
+     * The full hostname itself is excluded — it's already in the inventory.
+     */
+    private function deriveHostnameSubtokens(string $host): array {
+        $tokens = [];
+
+        if ($host === '') {
+            return $tokens;
+        }
+
+        $segments = preg_split('/-/', $host);
+        if (!is_array($segments)) {
+            return $tokens;
+        }
+
+        $count = count($segments);
+
+        for ($i = 0; $i < $count; $i++) {
+            for ($j = $i; $j < $count; $j++) {
+                $sub = implode('-', array_slice($segments, $i, $j - $i + 1));
+
+                if ($sub === '' || $sub === $host) {
+                    continue;
+                }
+
+                if (strlen($sub) < 4) {
+                    continue;
+                }
+
+                if (!preg_match('/[0-9]/', $sub)) {
+                    continue;
+                }
+
+                if (!preg_match('/[A-Za-z]/', $sub) && strpos($sub, '-') === false) {
+                    continue;
+                }
+
+                $tokens[] = $sub;
+            }
+        }
+
+        return $tokens;
+    }
+
+    private function fetchInventoryCache(ZabbixApiClient $api, int $ttl): array {
+        $state_path = (string) ($this->config['security']['state_path'] ?? '');
+        if ($state_path === '') {
+            return $this->buildInventoryFromApi($api, []);
+        }
+
+        $cache_dir = rtrim($state_path, '/\\').'/inventory';
+        $cache_key = substr(hash('sha256', (string) ($this->config['zabbix_api']['url'] ?? '')), 0, 16);
+        $cache_file = $cache_dir.'/zabbix-hosts-'.$cache_key.'.json';
+
+        $now = time();
+        $existing = [];
+
+        if (is_file($cache_file)) {
+            try {
+                $existing = Filesystem::readJson($cache_file);
+            }
+            catch (\Throwable $e) {
+                $existing = [];
+            }
+
+            $fetched_at = (int) ($existing['fetched_at'] ?? 0);
+            if ($fetched_at > 0 && ($now - $fetched_at) < $ttl) {
+                return $existing;
+            }
+        }
+
+        try {
+            $rebuilt = $this->buildInventoryFromApi($api, $existing);
+        }
+        catch (\Throwable $e) {
+            // Network or auth failure — fall back to whatever we had.
+            return $existing;
+        }
+
+        try {
+            Filesystem::ensureDir($cache_dir);
+            Filesystem::writeJsonAtomic($cache_file, $rebuilt);
+        }
+        catch (\Throwable $e) {
+            // Caching is best-effort; ignore write failures.
+        }
+
+        return $rebuilt;
+    }
+
+    private function buildInventoryFromApi(ZabbixApiClient $api, array $existing): array {
+        $hosts = $api->getHosts();
+
+        $previous_hosts = [];
+        $highest_index = 0;
+
+        if (isset($existing['hosts']) && is_array($existing['hosts'])) {
+            foreach ($existing['hosts'] as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $canonical = (string) ($row['canonical'] ?? '');
+                $alias = (string) ($row['alias'] ?? '');
+                if ($canonical === '' || $alias === '') {
+                    continue;
+                }
+                $previous_hosts[strtolower($canonical)] = $row;
+                if (preg_match('/(\d+)$/', $alias, $m)) {
+                    $highest_index = max($highest_index, (int) $m[1]);
+                }
+            }
+        }
+
+        $rebuilt = [];
+
+        foreach ($hosts as $row) {
+            $canonical = trim((string) ($row['host'] ?? ''));
+            if ($canonical === '') {
+                continue;
+            }
+
+            $key = strtolower($canonical);
+
+            if (isset($previous_hosts[$key])) {
+                $entry = $previous_hosts[$key];
+            }
+            else {
+                $highest_index++;
+                $entry = [
+                    'canonical' => $canonical,
+                    'alias' => 'ai-host-'.str_pad((string) $highest_index, 3, '0', STR_PAD_LEFT)
+                ];
+            }
+
+            $visible = trim((string) ($row['name'] ?? ''));
+            if ($visible !== '') {
+                $entry['visible'] = $visible;
+            }
+
+            $rebuilt[$key] = $entry;
+        }
+
+        return [
+            'fetched_at' => time(),
+            'hosts' => array_values($rebuilt)
+        ];
     }
 
     public function restoreText(string $text): string {
@@ -641,7 +965,24 @@ class Redactor {
         }
 
         foreach (($this->state['forward'] ?? []) as $original => $alias) {
-            if ($original !== '' && $original !== $alias && strpos($text, $original) !== false) {
+            if ($original === '' || $original === $alias) {
+                continue;
+            }
+
+            $type = $this->state['meta'][$original]['type'] ?? '';
+
+            if ($type === 'hostname' || $type === 'hostname_partial') {
+                // Hostname tokens are always matched with word boundaries,
+                // so substring hits inside unrelated identifiers don't count
+                // as leaks (e.g. "redb-01x" vs the host "db-01").
+                $pattern = '~(?<![A-Za-z0-9_.\-])'.preg_quote($original, '~').'(?![A-Za-z0-9_.\-])~iu';
+                if (@preg_match($pattern, $text) === 1) {
+                    throw new RuntimeException('Security redaction blocked a request because a known sensitive value remained after masking. Review the custom rules or disable strict mode if you need best-effort behavior.');
+                }
+                continue;
+            }
+
+            if (strpos($text, $original) !== false) {
                 throw new RuntimeException('Security redaction blocked a request because a known sensitive value remained after masking. Review the custom rules or disable strict mode if you need best-effort behavior.');
             }
         }
