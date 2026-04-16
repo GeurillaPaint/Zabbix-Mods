@@ -514,6 +514,81 @@
             sendButton.textContent = isBusy ? 'Sending…' : 'Send';
         }
 
+        function renderMarkdown(text) {
+            if (!text) { return ''; }
+
+            function escapeHtml(s) {
+                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            // Extract fenced code blocks before any other processing
+            var codeBlocks = [];
+            text = text.replace(/```([^\n]*)\n?([\s\S]*?)```/g, function(m, lang, code) {
+                var idx = codeBlocks.length;
+                codeBlocks.push('<pre><code>' + escapeHtml(code.replace(/\n$/, '')) + '</code></pre>');
+                return '\x02CODE' + idx + '\x02';
+            });
+
+            // Escape remaining HTML
+            text = escapeHtml(text);
+
+            // Inline code
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers (### ## #)
+            text = text.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+            text = text.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+            text = text.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+
+            // Bold
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+            // Horizontal rules
+            text = text.replace(/^---+$/gm, '<hr>');
+
+            // Unordered lists — group consecutive list lines into <ul>
+            text = text.replace(/((?:^[ \t]*[-*] .+$\n?)+)/gm, function(block) {
+                var items = block.trim().split('\n').map(function(line) {
+                    return '<li>' + line.replace(/^[ \t]*[-*] /, '') + '</li>';
+                }).join('');
+                return '<ul>' + items + '</ul>\n';
+            });
+
+            // Paragraphs — wrap non-block lines in <p>, blank lines flush the paragraph
+            var blockStart = /^<(h[2-4]|ul|pre|hr)/;
+            var lines = text.split('\n');
+            var output = [];
+            var paraLines = [];
+
+            function flushPara() {
+                if (paraLines.length) {
+                    output.push('<p>' + paraLines.join('<br>') + '</p>');
+                    paraLines = [];
+                }
+            }
+
+            lines.forEach(function(line) {
+                if (line.trim() === '') {
+                    flushPara();
+                } else if (blockStart.test(line.trim())) {
+                    flushPara();
+                    output.push(line);
+                } else {
+                    paraLines.push(line);
+                }
+            });
+            flushPara();
+
+            text = output.join('\n');
+
+            // Restore code blocks
+            codeBlocks.forEach(function(block, idx) {
+                text = text.replace('\x02CODE' + idx + '\x02', block);
+            });
+
+            return text;
+        }
+
         function renderHistory() {
             transcript.innerHTML = '';
 
@@ -535,9 +610,9 @@
                 title.className = 'ai-msg-title';
                 title.textContent = isAction ? 'AI (Zabbix Action)' : (message.role === 'assistant' ? 'AI' : 'You');
 
-                var body = document.createElement('pre');
-                body.className = 'ai-msg-body';
-                body.textContent = message.content || '';
+                var body = document.createElement('div');
+                body.className = 'ai-msg-body ai-msg-body-md';
+                body.innerHTML = renderMarkdown(message.content || '');
 
                 item.appendChild(title);
                 item.appendChild(body);

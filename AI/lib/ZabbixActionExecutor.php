@@ -508,7 +508,7 @@ class ZabbixActionExecutor {
         }
 
         $groups = [];
-        foreach (($host['groups'] ?? []) as $g) {
+        foreach (($host['hostgroups'] ?? []) as $g) {
             $groups[] = $g['name'] ?? '';
         }
         if ($groups) {

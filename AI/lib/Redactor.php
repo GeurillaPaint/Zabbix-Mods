@@ -253,7 +253,7 @@ class Redactor {
         // when only "db-01" is in the inventory.
         $pattern = '~(?<![A-Za-z0-9_.\-])(?:'.implode('|', $escaped).')(?![A-Za-z0-9_.\-])~iu';
 
-        return preg_replace_callback($pattern, function(array $m): string {
+        $result = preg_replace_callback($pattern, function(array $m): string {
             $matched = $m[0];
 
             if ($this->isAliasValue($matched)) {
@@ -288,6 +288,12 @@ class Redactor {
             $this->bumpStat('hostnames');
             return $alias;
         }, $text);
+
+        // preg_replace_callback returns null on PCRE failure (e.g. backtrack
+        // limit exceeded with large host inventories). Fall back to the
+        // original text — assertNoKnownLeaks() in the caller provides a
+        // safety net.
+        return $result ?? $text;
     }
 
     /**
@@ -984,6 +990,29 @@ class Redactor {
 
             if (strpos($text, $original) !== false) {
                 throw new RuntimeException('Security redaction blocked a request because a known sensitive value remained after masking. Review the custom rules or disable strict mode if you need best-effort behavior.');
+            }
+        }
+
+        // Also check the Zabbix inventory aliases. These are pre-loaded from
+        // the inventory cache but only get added to state['forward'] when the
+        // applyZabbixInventoryRedaction() callback actually fires for them.
+        // If preg_replace_callback fails (e.g. PCRE backtrack limit on a huge
+        // alternation pattern), the callback never runs and state['forward']
+        // never sees them — without this second pass, an unredacted hostname
+        // would silently leak through to the AI provider.
+        foreach ($this->zbx_inventory_canonical as $canonical_lower => $canonical) {
+            if ($canonical === '') {
+                continue;
+            }
+
+            // Skip if this canonical was already covered above.
+            if (isset($this->state['forward'][$canonical])) {
+                continue;
+            }
+
+            $pattern = '~(?<![A-Za-z0-9_.\-])'.preg_quote($canonical, '~').'(?![A-Za-z0-9_.\-])~iu';
+            if (@preg_match($pattern, $text) === 1) {
+                throw new RuntimeException('Security redaction blocked a request because a known Zabbix inventory hostname remained after masking. This usually indicates a regex failure (PCRE backtrack limit) on a large host inventory. Disable strict mode for best-effort behavior, or split the inventory.');
             }
         }
     }

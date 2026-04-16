@@ -174,8 +174,7 @@ class ZabbixApiClient {
      */
     public function getProblemsFiltered(array $params = []): array {
         $api_params = [
-            'output' => ['eventid', 'name', 'severity', 'acknowledged', 'clock', 'r_eventid'],
-            'selectHosts' => ['hostid', 'host', 'name'],
+            'output' => ['eventid', 'objectid', 'name', 'severity', 'acknowledged', 'clock', 'r_eventid'],
             'selectTags' => ['tag', 'value'],
             'source' => 0,
             'object' => 0,
@@ -209,7 +208,47 @@ class ZabbixApiClient {
             $api_params['search'] = ['name' => (string) $params['search']];
         }
 
-        return $this->call('problem.get', $api_params);
+        $problems = $this->call('problem.get', $api_params);
+
+        // Zabbix 7.0 problem.get does not support selectHosts. Resolve hosts
+        // via trigger.get using the objectid (triggerid) from each problem.
+        return $this->mergeHostsViaTriggers($problems);
+    }
+
+    /**
+     * Given an array of problem or event records (source=0, object=0), collect
+     * their objectid values (triggerids), fetch hosts via trigger.get, and
+     * merge the 'hosts' key back onto each record.
+     */
+    private function mergeHostsViaTriggers(array $records): array {
+        $trigger_ids = [];
+        foreach ($records as $r) {
+            if (!empty($r['objectid'])) {
+                $trigger_ids[$r['objectid']] = true;
+            }
+        }
+
+        if (empty($trigger_ids)) {
+            return $records;
+        }
+
+        $triggers = $this->call('trigger.get', [
+            'triggerids' => array_keys($trigger_ids),
+            'output' => ['triggerid'],
+            'selectHosts' => ['hostid', 'host', 'name']
+        ]);
+
+        $host_map = [];
+        foreach ($triggers as $t) {
+            $host_map[$t['triggerid']] = $t['hosts'] ?? [];
+        }
+
+        foreach ($records as &$r) {
+            $r['hosts'] = $host_map[$r['objectid'] ?? ''] ?? [];
+        }
+        unset($r);
+
+        return $records;
     }
 
     /**
@@ -263,7 +302,7 @@ class ZabbixApiClient {
     public function getHostInfo(string $hostname): ?array {
         $result = $this->call('host.get', [
             'output' => ['hostid', 'host', 'name', 'status', 'description', 'maintenance_status'],
-            'selectGroups' => ['groupid', 'name'],
+            'selectHostGroups' => ['groupid', 'name'],
             'selectInterfaces' => ['ip', 'dns', 'port', 'type', 'main'],
             'selectInventory' => 'extend',
             'selectTags' => ['tag', 'value'],
