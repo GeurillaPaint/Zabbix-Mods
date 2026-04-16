@@ -457,15 +457,29 @@ class ZabbixActionExecutor {
             return [];
         }
 
-        $hosts = $api->call('host.get', [
-            'search' => ['host' => $pattern, 'name' => $pattern],
-            'searchByAny' => true,
-            'searchWildcardsEnabled' => true,
+        $common = [
             'output' => ['hostid', 'host'],
             'limit' => 100
-        ]);
+        ];
 
-        return array_column($hosts ?: [], 'hostid');
+        $by_name = $api->call('host.get', array_merge($common, [
+            'search' => ['name' => $pattern]
+        ]));
+
+        $by_host = $api->call('host.get', array_merge($common, [
+            'search' => ['host' => $pattern]
+        ]));
+
+        $seen = [];
+        $hostids = [];
+        foreach (array_merge($by_name ?: [], $by_host ?: []) as $h) {
+            if (!empty($h['hostid']) && !isset($seen[$h['hostid']])) {
+                $seen[$h['hostid']] = true;
+                $hostids[] = $h['hostid'];
+            }
+        }
+
+        return $hostids;
     }
 
     private static function executeGetProblems(array $params, ZabbixApiClient $api): string {
@@ -552,18 +566,32 @@ class ZabbixActionExecutor {
 
         $limit = max(1, min(200, (int) ($params['limit'] ?? 50)));
 
-        $hosts = $api->call('host.get', [
-            'search' => [
-                'host' => $pattern,
-                'name' => $pattern
-            ],
-            'searchByAny' => true,
-            'searchWildcardsEnabled' => true,
+        $common = [
             'output' => ['hostid', 'host', 'name', 'status', 'maintenance_status'],
             'selectHostGroups' => ['name'],
             'selectInterfaces' => ['ip', 'dns', 'port', 'main'],
             'limit' => $limit
-        ]);
+        ];
+
+        // Search display name first (what users see in the UI).
+        $by_name = $api->call('host.get', array_merge($common, [
+            'search' => ['name' => $pattern]
+        ]));
+
+        // Search technical hostname separately.
+        $by_host = $api->call('host.get', array_merge($common, [
+            'search' => ['host' => $pattern]
+        ]));
+
+        // Merge and deduplicate by hostid.
+        $seen = [];
+        $hosts = [];
+        foreach (array_merge($by_name ?: [], $by_host ?: []) as $h) {
+            if (!isset($seen[$h['hostid']])) {
+                $seen[$h['hostid']] = true;
+                $hosts[] = $h;
+            }
+        }
 
         if (!$hosts) {
             return 'No hosts found matching pattern "'.$pattern.'".';
@@ -761,7 +789,8 @@ class ZabbixActionExecutor {
                 'template' => $params['template'] ?? null,
                 'search' => $params['search'] ?? null,
                 'value' => $params['value'] ?? null,
-                'min_severity' => $params['min_severity'] ?? null
+                'min_severity' => $params['min_severity'] ?? null,
+                'hostids' => $params['hostids'] ?? null
             ],
             (int) ($params['limit'] ?? 50)
         );
@@ -821,7 +850,8 @@ class ZabbixActionExecutor {
             (string) ($params['hostname'] ?? ''),
             [
                 'search' => $params['search'] ?? null,
-                'status' => $params['status'] ?? null
+                'status' => $params['status'] ?? null,
+                'hostids' => $params['hostids'] ?? null
             ],
             (int) ($params['limit'] ?? 50)
         );

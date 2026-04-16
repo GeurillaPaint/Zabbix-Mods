@@ -507,7 +507,10 @@ class ZabbixApiClient {
             'limit' => min($limit, 500)
         ];
 
-        if ($hostname !== '') {
+        if (!empty($filters['hostids'])) {
+            $params['hostids'] = (array) $filters['hostids'];
+        }
+        elseif ($hostname !== '') {
             $hid = $this->getHostIdByName($hostname);
             if ($hid !== null) {
                 $params['hostids'] = [$hid];
@@ -604,6 +607,9 @@ class ZabbixApiClient {
             if ($tid !== null) {
                 $params['templateids'] = [$tid];
             }
+        }
+        elseif (!empty($filters['hostids'])) {
+            $params['hostids'] = (array) $filters['hostids'];
         }
         elseif ($hostname !== '') {
             $hid = $this->getHostIdByName($hostname);
