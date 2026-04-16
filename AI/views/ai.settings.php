@@ -83,7 +83,7 @@ $render_provider_row = static function(array $provider = []) use ($h): string {
             </div>
             <div class="ai-span-2">
                 <label class="ai-label"><?= $h(_('API key / secret')) ?></label>
-                <input class="ai-input" type="password" name="providers[<?= $h($id) ?>][api_key]" value="" placeholder="<?= !empty($provider['api_key_present']) ? $h(_('Leave blank to keep current secret')) : '' ?>">
+                <input class="ai-input" type="password" autocomplete="new-password" name="providers[<?= $h($id) ?>][api_key]" value="" placeholder="<?= !empty($provider['api_key_present']) ? $h(_('Leave blank to keep current secret')) : '' ?>">
                 <div class="ai-inline-notes">
                     <?php if (!empty($provider['api_key_present'])): ?>
                         <span class="ai-muted"><?= $h(_('Stored secret exists.')) ?></span>
@@ -355,7 +355,7 @@ ob_start();
                 </div>
                 <div class="ai-span-2">
                     <label class="ai-label"><?= $h(_('API token')) ?></label>
-                    <input class="ai-input" type="password" name="zabbix_api[token]" value="" placeholder="<?= !empty($config['zabbix_api']['token_present']) ? $h(_('Leave blank to keep current token')) : '' ?>">
+                    <input class="ai-input" type="password" autocomplete="new-password" name="zabbix_api[token]" value="" placeholder="<?= !empty($config['zabbix_api']['token_present']) ? $h(_('Leave blank to keep current token')) : '' ?>">
                     <div class="ai-inline-notes">
                         <?php if (!empty($config['zabbix_api']['token_present'])): ?>
                             <span class="ai-muted"><?= $h(_('Stored token exists.')) ?></span>
@@ -398,7 +398,7 @@ ob_start();
                 </div>
                 <div class="ai-span-2">
                     <label class="ai-label"><?= $h(_('NetBox token')) ?></label>
-                    <input class="ai-input" type="password" name="netbox[token]" value="" placeholder="<?= !empty($config['netbox']['token_present']) ? $h(_('Leave blank to keep current token')) : '' ?>">
+                    <input class="ai-input" type="password" autocomplete="new-password" name="netbox[token]" value="" placeholder="<?= !empty($config['netbox']['token_present']) ? $h(_('Leave blank to keep current token')) : '' ?>">
                     <div class="ai-inline-notes">
                         <?php if (!empty($config['netbox']['token_present'])): ?>
                             <span class="ai-muted"><?= $h(_('Stored token exists.')) ?></span>
@@ -461,7 +461,7 @@ ob_start();
                 </div>
                 <div class="ai-span-2">
                     <label class="ai-label"><?= $h(_('Shared secret')) ?></label>
-                    <input class="ai-input" type="password" name="webhook[shared_secret]" value="" placeholder="<?= !empty($config['webhook']['shared_secret_present']) ? $h(_('Leave blank to keep current secret')) : '' ?>">
+                    <input class="ai-input" type="password" autocomplete="new-password" name="webhook[shared_secret]" value="" placeholder="<?= !empty($config['webhook']['shared_secret_present']) ? $h(_('Leave blank to keep current secret')) : '' ?>">
                     <div class="ai-inline-notes">
                         <?php if (!empty($config['webhook']['shared_secret_present'])): ?>
                             <span class="ai-muted"><?= $h(_('Stored secret exists.')) ?></span>
