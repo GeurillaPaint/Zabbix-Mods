@@ -38,7 +38,8 @@ class ZabbixActionExecutor {
                 'params' => [
                     'severity_min' => '(int, optional) Minimum severity 0-5 (0=Not classified, 1=Information, 2=Warning, 3=Average, 4=High, 5=Disaster).',
                     'acknowledged' => '(bool, optional) Filter by acknowledged status. true=only acknowledged, false=only unacknowledged.',
-                    'host' => '(string, optional) Filter by hostname.',
+                    'host' => '(string, optional) Filter by EXACT hostname. Use host_pattern instead if you only have a partial name.',
+                    'host_pattern' => '(string, optional) Filter problems by partial hostname pattern. Resolves matching hosts automatically. Use this instead of host when the user gives a partial or abbreviated hostname.',
                     'search' => '(string, optional) Search problem name text.',
                     'limit' => '(int, optional) Max results, default 50.'
                 ],
@@ -54,10 +55,28 @@ class ZabbixActionExecutor {
                 'rw' => 'read',
                 'category' => ''
             ],
-            'get_host_info' => [
-                'description' => 'Get detailed information about a host including inventory, groups, interfaces, and tags.',
+            'search_hosts' => [
+                'description' => 'Search for hosts by partial name or pattern. Use this whenever the user gives a partial hostname, an abbreviation, or asks to find hosts containing a keyword. Returns matching hosts with groups and interfaces. Always prefer this over get_host_info when you do not have an exact hostname.',
                 'params' => [
-                    'hostname' => '(string, required) The technical hostname.'
+                    'pattern' => '(string, required) Partial hostname or display name to search for. Matches any host containing this string.',
+                    'limit' => '(int, optional) Max results, default 50.'
+                ],
+                'rw' => 'read',
+                'category' => ''
+            ],
+            'search_host_groups' => [
+                'description' => 'Search for host groups by partial name. Use when the user asks about groups containing a keyword (e.g. "find all MSSQL groups").',
+                'params' => [
+                    'pattern' => '(string, required) Partial group name to search for.',
+                    'limit' => '(int, optional) Max results, default 50.'
+                ],
+                'rw' => 'read',
+                'category' => ''
+            ],
+            'get_host_info' => [
+                'description' => 'Get detailed information about a host including inventory, groups, interfaces, and tags. Requires an EXACT hostname. If you only have a partial name, use search_hosts first.',
+                'params' => [
+                    'hostname' => '(string, required) The exact technical hostname.'
                 ],
                 'rw' => 'read',
                 'category' => ''
@@ -82,7 +101,8 @@ class ZabbixActionExecutor {
                 'description' => 'Get triggers with optional filters. You can search by template name OR hostname. When the user mentions a template name, always use the template parameter instead of hostname.',
                 'params' => [
                     'template' => '(string, optional) Filter by template name. Use this when the user specifies a template (e.g. "Windows Monitoring Zabbix Agent Active"). Takes priority over hostname.',
-                    'hostname' => '(string, optional) Filter by hostname. Only used if template is not given.',
+                    'hostname' => '(string, optional) Filter by EXACT hostname. Only used if template is not given. Use host_pattern for partial names.',
+                    'host_pattern' => '(string, optional) Filter triggers by partial hostname pattern. Resolves matching hosts automatically. Use this when the user gives an abbreviated or partial hostname.',
                     'search' => '(string, optional) Search trigger name/description text.',
                     'value' => '(int, optional) 0=OK, 1=PROBLEM.',
                     'min_severity' => '(int, optional) Minimum severity 0-5.',
@@ -94,7 +114,8 @@ class ZabbixActionExecutor {
             'get_items' => [
                 'description' => 'Get monitored items with optional filters.',
                 'params' => [
-                    'hostname' => '(string, optional) Filter by hostname.',
+                    'hostname' => '(string, optional) Filter by EXACT hostname. Use host_pattern for partial names.',
+                    'host_pattern' => '(string, optional) Filter items by partial hostname pattern. Resolves matching hosts automatically.',
                     'search' => '(string, optional) Search item name text.',
                     'status' => '(int, optional) 0=enabled, 1=disabled.',
                     'limit' => '(int, optional) Max results, default 50.'
@@ -378,6 +399,12 @@ class ZabbixActionExecutor {
             case 'get_unsupported_items':
                 return self::executeGetUnsupportedItems($params, $zabbix_api);
 
+            case 'search_hosts':
+                return self::executeSearchHosts($params, $zabbix_api);
+
+            case 'search_host_groups':
+                return self::executeSearchHostGroups($params, $zabbix_api);
+
             case 'get_host_info':
                 return self::executeGetHostInfo($params, $zabbix_api);
 
@@ -421,7 +448,37 @@ class ZabbixActionExecutor {
 
     // ── Read tool executors ────────────────────────────────────────
 
+    /**
+     * Resolve a partial hostname pattern to an array of hostids.
+     * Returns empty array if no hosts match.
+     */
+    private static function resolveHostIds(string $pattern, ZabbixApiClient $api): array {
+        if ($pattern === '') {
+            return [];
+        }
+
+        $hosts = $api->call('host.get', [
+            'search' => ['host' => $pattern, 'name' => $pattern],
+            'searchByAny' => true,
+            'searchWildcardsEnabled' => true,
+            'output' => ['hostid', 'host'],
+            'limit' => 100
+        ]);
+
+        return array_column($hosts ?: [], 'hostid');
+    }
+
     private static function executeGetProblems(array $params, ZabbixApiClient $api): string {
+        $host_pattern = trim((string) ($params['host_pattern'] ?? ''));
+        if ($host_pattern !== '') {
+            $hostids = self::resolveHostIds($host_pattern, $api);
+            if (!$hostids) {
+                return 'No hosts found matching pattern "'.$host_pattern.'". Try search_hosts to verify the pattern.';
+            }
+            $params['hostids'] = $hostids;
+            unset($params['host_pattern']);
+        }
+
         $problems = $api->getProblemsFiltered($params);
 
         if (!$problems) {
@@ -481,6 +538,96 @@ class ZabbixActionExecutor {
                 }
             }
             $lines[] = '';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private static function executeSearchHosts(array $params, ZabbixApiClient $api): string {
+        $pattern = trim((string) ($params['pattern'] ?? ''));
+
+        if ($pattern === '') {
+            return 'Error: pattern parameter is required.';
+        }
+
+        $limit = max(1, min(200, (int) ($params['limit'] ?? 50)));
+
+        $hosts = $api->call('host.get', [
+            'search' => [
+                'host' => $pattern,
+                'name' => $pattern
+            ],
+            'searchByAny' => true,
+            'searchWildcardsEnabled' => true,
+            'output' => ['hostid', 'host', 'name', 'status', 'maintenance_status'],
+            'selectHostGroups' => ['name'],
+            'selectInterfaces' => ['ip', 'dns', 'port', 'main'],
+            'limit' => $limit
+        ]);
+
+        if (!$hosts) {
+            return 'No hosts found matching pattern "'.$pattern.'".';
+        }
+
+        $lines = ['Found '.count($hosts).' host(s) matching "'.$pattern.'":', ''];
+
+        foreach ($hosts as $h) {
+            $status = ($h['status'] ?? '0') === '0' ? 'Enabled' : 'Disabled';
+            $maint = ($h['maintenance_status'] ?? '0') === '1' ? ' [In maintenance]' : '';
+            $display = ($h['name'] !== $h['host']) ? $h['host'].' ('.$h['name'].')' : $h['host'];
+
+            $groups = [];
+            foreach (($h['hostgroups'] ?? []) as $g) {
+                $groups[] = $g['name'] ?? '';
+            }
+
+            $iface = '';
+            foreach (($h['interfaces'] ?? []) as $i) {
+                if (($i['main'] ?? '0') === '1') {
+                    $iface = ($i['ip'] !== '' ? $i['ip'] : $i['dns']).':'.$i['port'];
+                    break;
+                }
+            }
+
+            $lines[] = '- '.$display.' ['.$status.']'.$maint;
+            if ($groups) {
+                $lines[] = '  Groups: '.implode(', ', array_filter($groups));
+            }
+            if ($iface) {
+                $lines[] = '  Interface: '.$iface;
+            }
+            $lines[] = '';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private static function executeSearchHostGroups(array $params, ZabbixApiClient $api): string {
+        $pattern = trim((string) ($params['pattern'] ?? ''));
+
+        if ($pattern === '') {
+            return 'Error: pattern parameter is required.';
+        }
+
+        $limit = max(1, min(200, (int) ($params['limit'] ?? 50)));
+
+        $groups = $api->call('hostgroup.get', [
+            'search' => ['name' => $pattern],
+            'searchWildcardsEnabled' => true,
+            'output' => ['groupid', 'name'],
+            'selectHosts' => ['host'],
+            'limit' => $limit
+        ]);
+
+        if (!$groups) {
+            return 'No host groups found matching pattern "'.$pattern.'".';
+        }
+
+        $lines = ['Found '.count($groups).' group(s) matching "'.$pattern.'":', ''];
+
+        foreach ($groups as $g) {
+            $host_count = count($g['hosts'] ?? []);
+            $lines[] = '- [ID: '.$g['groupid'].'] '.$g['name'].' ('.$host_count.' host(s))';
         }
 
         return implode("\n", $lines);
@@ -597,6 +744,17 @@ class ZabbixActionExecutor {
     }
 
     private static function executeGetTriggers(array $params, ZabbixApiClient $api): string {
+        $host_pattern = trim((string) ($params['host_pattern'] ?? ''));
+        $hostname = (string) ($params['hostname'] ?? '');
+
+        if ($host_pattern !== '' && $hostname === '') {
+            $hostids = self::resolveHostIds($host_pattern, $api);
+            if (!$hostids) {
+                return 'No hosts found matching pattern "'.$host_pattern.'". Try search_hosts to verify the pattern.';
+            }
+            $params['hostids'] = $hostids;
+        }
+
         $triggers = $api->getTriggersFiltered(
             (string) ($params['hostname'] ?? ''),
             [
@@ -648,6 +806,17 @@ class ZabbixActionExecutor {
     }
 
     private static function executeGetItems(array $params, ZabbixApiClient $api): string {
+        $host_pattern = trim((string) ($params['host_pattern'] ?? ''));
+        $hostname = (string) ($params['hostname'] ?? '');
+
+        if ($host_pattern !== '' && $hostname === '') {
+            $hostids = self::resolveHostIds($host_pattern, $api);
+            if (!$hostids) {
+                return 'No hosts found matching pattern "'.$host_pattern.'". Try search_hosts to verify the pattern.';
+            }
+            $params['hostids'] = $hostids;
+        }
+
         $items = $api->getItemsFiltered(
             (string) ($params['hostname'] ?? ''),
             [

@@ -253,6 +253,13 @@
                 });
         }
 
+        messageField.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                composeForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            }
+        });
+
         composeForm.addEventListener('submit', function (event) {
             event.preventDefault();
 
