@@ -43,6 +43,7 @@ class Config {
                     ."5. Verification step with expected output\n"
                     ."6. Escalation artifacts if the quick fix fails\n\n"
                     ."When get_items returns no results, retry with a broader or different search term before concluding no data exists.\n\n"
+                    ."When the user asks to find or list hosts by name or keyword, always use search_hosts first — never get_items or get_host_info for host discovery.\n\n"
                     ."If Zabbix data is available in context (host, event, item history), use it. Do not speculate about things you can look up.\n\n"
                     ."Reply in Markdown. Commands go in fenced code blocks. Match response length to the complexity of what was asked."
             ]],

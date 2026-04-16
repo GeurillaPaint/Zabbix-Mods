@@ -56,7 +56,7 @@ class ZabbixActionExecutor {
                 'category' => ''
             ],
             'search_hosts' => [
-                'description' => 'Search for hosts by partial name or pattern. Use this whenever the user gives a partial hostname, an abbreviation, or asks to find hosts containing a keyword. Returns matching hosts with groups and interfaces. Always prefer this over get_host_info when you do not have an exact hostname.',
+                'description' => 'Search for hosts by partial name or pattern. THIS IS THE CORRECT TOOL when the user asks to find, list, or look up hosts by name — including partial names, abbreviations, or keywords like "hosts with POP in the name". Execute this immediately without asking permission. Do NOT use get_items or get_host_info for host discovery. Returns matching hosts with groups and interfaces.',
                 'params' => [
                     'pattern' => '(string, required) Partial hostname or display name to search for. Matches any host containing this string.',
                     'limit' => '(int, optional) Max results, default 50.'
